@@ -1,0 +1,2 @@
+# OpenNC 8Cuffs Wings 3.950
+Chains|cuff-back|wingr=rlac~wingl=llac~wingr=wingl

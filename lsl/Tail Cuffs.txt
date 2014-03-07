@@ -1,0 +1,2 @@
+# OpenNC 8Cuffs Tail 3.950
+Tail|*none*|taill=rlac~tailr=llac
