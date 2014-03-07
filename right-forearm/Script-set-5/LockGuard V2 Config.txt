@@ -1,0 +1,7 @@
+ID rightwrist
+ID wrists
+ID allfour
+texture 245ea72d-bc79-fee3-a802-8e73c0f09473
+size 0.07 0.07
+life 1
+gravity 0.3
