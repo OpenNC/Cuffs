@@ -10,4 +10,4 @@ Hang|cuff-hang|orlac=illac~oluac=oruac
 Hang2|cuff-hanging|orlac=illac~oluac=oruac
 Head|cuff-head|rlac=llac~orlac=oruac~iluac=iruac~ollac=oluac
 Pinion|cuff-pinion|orlac=rocbelt~ollac=locbelt~bocbelt=ruac~luac=bocbelt~ruac=luac~ollac=oluac~orlac=oruac
-UShape|winter-seale - u-shape2|rlac=llac~illac=iluac~iruac=irlac~bocbelt=ollac~bocbelt=orlac
+UShape|winter seale - u-shape2|rlac=llac~illac=iluac~iruac=irlac~bocbelt=ollac~bocbelt=orlac
