@@ -411,7 +411,7 @@ ParseSingleCmd( key keyID, string szMsg )
     key       sztoucher = llList2String(lstParsed,2);
     if ( szCmd == "chain" )
     {
-        if ( llGetListLength(lstParsed) == 4 )
+        if (( llGetListLength(lstParsed) == 4 ) || ( llGetListLength(lstParsed) == 7 ))
         {
             if ( llGetKey() != keyID )
                 llMessageLinked( LINK_SET, LM_CUFF_CMD, szMsg, llGetKey() );
