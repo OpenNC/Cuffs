@@ -35,6 +35,30 @@ integer g_nStdHandle; // standard listen handler
 //===================
 list    g_lstExtPrefix    = [
     "occ",  //occ     opencollar collar command module, please make sure to change that for you items, the list of names following ids should only be used for cuffs!
+    "chest",
+    "skull",
+    "lhand",
+    "rhand",
+    "lfoot",
+    "rfoot",
+    "spine",
+    "mouth",
+    "chin",
+    "lear",
+    "rear",
+    "leye",
+    "reye",
+    "nose",
+    "rhip",
+    "rpec",
+    "HUD Center 2",
+    "HUD Top Right",
+    "HUD Top",
+    "HUD Top Left",
+    "HUD Center",
+    "HUD Bottom Left",
+    "HUD Bottom",
+    "HUD Bottom Right",
     "ruac", //ruac    right upper arm cuff
     "rlac", //rlac    right lower arm cuff
     "luac", //luac    left upper arm cuff
@@ -43,6 +67,10 @@ list    g_lstExtPrefix    = [
     "rllc", //rllc    right lower leg cuff
     "lulc", //lulc    left upper leg cuff
     "lllc", //lllc    left lower leg cuff
+    "lpec", //lpec    left pec (belt)
+    "lhip", //lhip    left hip (tail)
+    "lshoulder", //lshoulder   left shoulder (wing)
+    "rshoulder", //rshoulder   right shoulder (wing)
     "ocbelt" //opencuffs belt
         ];
 list    g_lstModTokens = ["rlac"]; // valid token for this module
