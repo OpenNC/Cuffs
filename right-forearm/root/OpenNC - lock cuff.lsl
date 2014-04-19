@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////////
 // ------------------------------------------------------------------------------ //
 //                            OpenNC - lock cuff                                  //
-//                            version 3.950                                       //
+//                            version 3.960                                       //
 // ------------------------------------------------------------------------------ //
 // Licensed under the GPLv2 with additional requirements specific to Second Life® //
 // and other virtual metaverse environments.                                      //
@@ -24,8 +24,8 @@ string g_sOpenLockPrimName="OpenLock"; // Prim description of elements that shou
 string g_sClosedLockPrimName="ClosedLock"; // Prim description of elements that should be shown when locked
 list g_lClosedLockElements; //to store the locks prim to hide or show //EB
 list g_lOpenLockElements; //to store the locks prim to hide or show //EB
-string LOCK = " LOCK";
-string UNLOCK = " UNLOCK";
+string LOCK = "LOCK";
+string UNLOCK = "UNLOCK";
 //MESSAGE MAP
 integer COMMAND_OWNER = 500;
 integer COMMAND_WEARER = 503;
@@ -148,25 +148,25 @@ SetLockElementAlpha() //EB
 Lock()
 {
     g_iLocked = TRUE;
-    llMessageLinked(LINK_SET, LM_SETTING_SAVE, "Global_locked=1", NULL_KEY);
-    llMessageLinked(LINK_SET, RLV_CMD, "detach=n", NULL_KEY);
-    llMessageLinked(LINK_SET, MENUNAME_RESPONSE, g_sParentMenu + "|" + UNLOCK, NULL_KEY);
+    llMessageLinked(LINK_SET, LM_SETTING_SAVE, "Global_locked=1", "");
+    llMessageLinked(LINK_SET, RLV_CMD, "detach=n", "");
+    llMessageLinked(LINK_SET, MENUNAME_RESPONSE, g_sParentMenu + "|" + UNLOCK, "");
     llPlaySound("caa78697-8493-ead3-4737-76dcc926df30", 1.0);
-    llMessageLinked(LINK_SET, MENUNAME_REMOVE, g_sParentMenu + "|" + LOCK, NULL_KEY);
+    llMessageLinked(LINK_SET, MENUNAME_REMOVE, g_sParentMenu + "|" + LOCK, "");
     SetLockElementAlpha();//EB
-    llMessageLinked(LINK_SET, LM_CUFF_CMD, "Lock=on", NULL_KEY);
+    llMessageLinked(LINK_SET, LM_CUFF_CMD, "Lock=on", "");
 }
 
 Unlock()
 {
     g_iLocked = FALSE;
-    llMessageLinked(LINK_SET, LM_SETTING_DELETE, "Global_locked", NULL_KEY);
-    llMessageLinked(LINK_SET, RLV_CMD, "detach=y", NULL_KEY);
-    llMessageLinked(LINK_SET, MENUNAME_RESPONSE, g_sParentMenu + "|" + LOCK, NULL_KEY);
+    llMessageLinked(LINK_SET, LM_SETTING_DELETE, "Global_locked", "");
+    llMessageLinked(LINK_SET, RLV_CMD, "detach=y", "");
+    llMessageLinked(LINK_SET, MENUNAME_RESPONSE, g_sParentMenu + "|" + LOCK, "");
     llPlaySound("ff09cab4-3358-326e-6426-ec8d3cd3b98e", 1.0);
-    llMessageLinked(LINK_SET, MENUNAME_REMOVE, g_sParentMenu + "|" + UNLOCK, NULL_KEY);
+    llMessageLinked(LINK_SET, MENUNAME_REMOVE, g_sParentMenu + "|" + UNLOCK, "");
     SetLockElementAlpha(); //EB
-    llMessageLinked(LINK_SET, LM_CUFF_CMD, "Lock=off", NULL_KEY);
+    llMessageLinked(LINK_SET, LM_CUFF_CMD, "Lock=off", "");
 }
 
 default
@@ -187,6 +187,18 @@ default
             {
                 if (g_iLocked) Notify(kID, "Locked.", FALSE);
                 else Notify(kID, "Unlocked.", FALSE);
+            }
+            else if (sStr == "refreshmenu")
+            {
+                llSleep (0.1);
+                if (g_iLocked)
+                {
+                    llMessageLinked(LINK_SET, MENUNAME_RESPONSE, g_sParentMenu + "|" + UNLOCK, "");
+                }
+                else
+                {
+                    llMessageLinked(LINK_SET, MENUNAME_RESPONSE, g_sParentMenu + "|" + LOCK, "");
+                }
             }
             else if (sStr == "lock" || (!g_iLocked && sStr == "togglelock"))
             {
@@ -241,15 +253,15 @@ default
                 g_iLocked = (integer)sValue;
                 if (g_iLocked)
                 {
-                    llMessageLinked(LINK_SET, RLV_CMD, "detach=n", NULL_KEY);
-                    llMessageLinked(LINK_SET, MENUNAME_RESPONSE, g_sParentMenu + "|" + UNLOCK, NULL_KEY);
-                    llMessageLinked(LINK_SET, MENUNAME_REMOVE, g_sParentMenu + "|" + LOCK, NULL_KEY);
+                    llMessageLinked(LINK_SET, RLV_CMD, "detach=n", "");
+                    llMessageLinked(LINK_SET, MENUNAME_RESPONSE, g_sParentMenu + "|" + UNLOCK, "");
+                    llMessageLinked(LINK_SET, MENUNAME_REMOVE, g_sParentMenu + "|" + LOCK, "");
                 }
                 else
                 {
-                    llMessageLinked(LINK_SET, RLV_CMD, "detach=y", NULL_KEY);
-                    llMessageLinked(LINK_SET, MENUNAME_RESPONSE, g_sParentMenu + "|" + LOCK, NULL_KEY);
-                    llMessageLinked(LINK_SET, MENUNAME_REMOVE, g_sParentMenu + "|" + UNLOCK, NULL_KEY);
+                    llMessageLinked(LINK_SET, RLV_CMD, "detach=y", "");
+                    llMessageLinked(LINK_SET, MENUNAME_RESPONSE, g_sParentMenu + "|" + LOCK, "");
+                    llMessageLinked(LINK_SET, MENUNAME_REMOVE, g_sParentMenu + "|" + UNLOCK, "");
                 }
                 SetLockElementAlpha(); //EB
             }
@@ -273,33 +285,33 @@ default
         {
             if (g_iLocked)
             {
-                llMessageLinked(LINK_SET, MENUNAME_RESPONSE, g_sParentMenu + "|" + UNLOCK, NULL_KEY);
+                llMessageLinked(LINK_SET, MENUNAME_RESPONSE, g_sParentMenu + "|" + UNLOCK, "");
             }
             else
             {
-                llMessageLinked(LINK_SET, MENUNAME_RESPONSE, g_sParentMenu + "|" + LOCK, NULL_KEY);
+                llMessageLinked(LINK_SET, MENUNAME_RESPONSE, g_sParentMenu + "|" + LOCK, "");
             }
         }
         else if (iNum == RLV_REFRESH)
         {
             if (g_iLocked)
             {
-                llMessageLinked(LINK_SET, RLV_CMD, "detach=n", NULL_KEY);
+                llMessageLinked(LINK_SET, RLV_CMD, "detach=n", "");
             }
             else
             {
-                llMessageLinked(LINK_SET, RLV_CMD, "detach=y", NULL_KEY);
+                llMessageLinked(LINK_SET, RLV_CMD, "detach=y", "");
             }
         }
         else if (iNum == RLV_CLEAR)
         {
             if (g_iLocked)
             {
-                llMessageLinked(LINK_SET, RLV_CMD, "detach=n", NULL_KEY);
+                llMessageLinked(LINK_SET, RLV_CMD, "detach=n", "");
             }
             else
             {
-                llMessageLinked(LINK_SET, RLV_CMD, "detach=y", NULL_KEY);
+                llMessageLinked(LINK_SET, RLV_CMD, "detach=y", "");
             }
         }
     }
@@ -307,7 +319,7 @@ default
     {
         if (g_iLocked)
         {
-            if(kID == NULL_KEY)
+            if(kID == "")
             {
                 g_bDetached = TRUE;
                 NotifyOwners(llKey2Name(g_kWearer) + " has detached me while locked at " + GetTimestamp() + "!");

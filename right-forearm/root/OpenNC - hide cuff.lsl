@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////////
 // ------------------------------------------------------------------------------ //
 //                            OpenNC - hide cuff                                 //
-//                            version 3.950                                       //
+//                            version 3.960                                       //
 // ------------------------------------------------------------------------------ //
 // Licensed under the GPLv2 with additional requirements specific to Second Life® //
 // and other virtual metaverse environments.                                      //
@@ -188,8 +188,8 @@ SaveAlphaSettings()
         n = llListFindList(g_lAlphaSettings, [token]);
         token = g_sScript + token;
         value = llList2String(g_lAlphaSettings, n + 1);
-        if (~n) llMessageLinked(LINK_SET, LM_SETTING_SAVE, token + "=" + value, NULL_KEY);
-        else llMessageLinked(LINK_SET, LM_SETTING_DELETE, token, NULL_KEY);
+        if (~n) llMessageLinked(LINK_SET, LM_SETTING_SAVE, token + "=" + value, "");
+        else llMessageLinked(LINK_SET, LM_SETTING_DELETE, token, "");
     }
 }
 
@@ -281,7 +281,7 @@ default
         g_kWearer = llGetOwner();
         BuildElementList();
         llSleep(1.0);
-        llMessageLinked(LINK_SET, MENUNAME_RESPONSE, g_sParentMenu + "|" + g_sSubMenu, NULL_KEY);
+        llMessageLinked(LINK_SET, MENUNAME_RESPONSE, g_sParentMenu + "|" + g_sSubMenu, "");
         //-------extra cuffs
         // get unique channel numbers for the command and cuff channel, cuff channel will be used for LG chains of cuffs as well
         g_nCmdChannel = nGetOwnerChannel(g_nCmdChannelOffset);
@@ -309,7 +309,7 @@ default
                     SaveAlphaSettings();
                     //-------extra cuff---------------
                     // OpenNC: send hide to slave cuffs
-                    SendCmd("*","HideMe=1",NULL_KEY);
+                    SendCmd("*","HideMe=1","");
                     //-------end extra cuff---------------
                 }
             }
@@ -321,7 +321,7 @@ default
                     SaveAlphaSettings();
                     //-------extra cuff---------------
                     // OpenNC: send show to slave cuffs
-                    SendCmd("*","HideMe=0",NULL_KEY);
+                    SendCmd("*","HideMe=0","");
                     //-------end extra cuff---------------
                 }
             }
@@ -331,6 +331,11 @@ default
                 {
                     ElementMenu(kID, iNum);
                 }
+            }
+            else if (sStr == "refreshmenu")
+            {
+                g_lButtons = [];
+                llMessageLinked(LINK_SET, MENUNAME_REQUEST, g_sSubMenu, "");
             }
             else if (StartsWith(sStr, "setalpha"))
             {
@@ -405,7 +410,7 @@ default
         }
         else if (iNum == MENUNAME_REQUEST && sStr == g_sParentMenu)
         {
-            llMessageLinked(LINK_SET, MENUNAME_RESPONSE, g_sParentMenu + "|" + g_sSubMenu, NULL_KEY);
+            llMessageLinked(LINK_SET, MENUNAME_RESPONSE, g_sParentMenu + "|" + g_sSubMenu, "");
         }
         else if (iNum == DIALOG_RESPONSE)
         {
@@ -446,14 +451,14 @@ default
                         {
                             SetAllElementsAlpha(1.0);
                             //-------extra cuff---------------
-                            SendCmd("*","HideMe=0",NULL_KEY);
+                            SendCmd("*","HideMe=0","");
                             //-------end extra cuff---------------
                         }
                         else if (sCmd == "Hide")
                         {
                             SetAllElementsAlpha(0.0);
                             //-------extra cuff---------------
-                            SendCmd("*","HideMe=1",NULL_KEY);
+                            SendCmd("*","HideMe=1","");
                             //-------end extra cuff---------------
                         }
                     }

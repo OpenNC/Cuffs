@@ -1,0 +1,5 @@
+# OpenNC 8Cuffs gArms 3.960
+Front|cuff-front|rlac=llac
+Back|cuff-back|rlac=llac
+Belt|cuff-belt|rlac=llac
+UShape|cuff-ushape|rlac=llac

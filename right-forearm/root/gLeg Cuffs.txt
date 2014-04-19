@@ -1,0 +1,5 @@
+# OpenNC 8Cuffs glegs 3.960
+Chain Only|*none*|rllc=lllc
+Kneel|cuff-kneel|rllc=lllc
+Belly|cuff-belly|rllc=lllc
+Hogtie|hogtie|rllc=rlac~lllc=llac

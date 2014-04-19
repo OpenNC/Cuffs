@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////////
 // ------------------------------------------------------------------------------ //
 //                            OpenNC - timer cuff                                 //
-//                            version 3.950                                       //
+//                            version 3.960                                       //
 // ------------------------------------------------------------------------------ //
 // Licensed under the GPLv2 with additional requirements specific to Second Life® //
 // and other virtual metaverse environments.                                      //
@@ -239,7 +239,7 @@ DoMenu(key keyID, integer iAuth)
 
 DoOnMenu(key keyID, integer iAuth)
 {
-    if (keyID == NULL_KEY) return;
+    if (keyID == "") return;
         string sPrompt = "Pick an option.";
     sPrompt += "\n Online timer - "+Int2Time(g_iOnSetTime);
     if (g_iOnRunning)
@@ -255,7 +255,7 @@ DoOnMenu(key keyID, integer iAuth)
 
 DoRealMenu(key keyID, integer iAuth)
 {
-    if (keyID == NULL_KEY) return;
+    if (keyID == "") return;
     string sPrompt = "Pick an option.";
     //fill in your button list and additional prompt here
     sPrompt += "\n Realtime timer - " + Int2Time(g_iRealSetTime);
@@ -365,6 +365,11 @@ integer UserCommand(integer iNum, string sStr, key kID)
     //someone asked for our menu
     //give this plugin's menu to kID
     if (llToLower(sStr) == "timer" || sStr == "menu "+g_sSubMenu) DoMenu(kID, iNum);
+    else if (sStr == "refreshmenu")
+            {
+                llSleep (0.1);
+                llMessageLinked(LINK_SET, MENUNAME_REQUEST, g_sSubMenu, "");
+            }
     else if(llGetSubString(sStr, 0, 5) == "timer ")
     {
         string sMsg=llGetSubString(sStr, 6, -1);
@@ -601,8 +606,8 @@ default
         llWhisper(g_iInterfaceChannel, "timer|sendtimers");
         llSleep(1.0);
         // send reequest to main menu and ask other menus if the wnt to register with us
-        llMessageLinked(LINK_SET, MENUNAME_REQUEST, g_sSubMenu, NULL_KEY);
-        llMessageLinked(LINK_SET, MENUNAME_RESPONSE, g_sParentMenu + "|" + g_sSubMenu, NULL_KEY);
+        llMessageLinked(LINK_SET, MENUNAME_REQUEST, g_sSubMenu, "");
+        llMessageLinked(LINK_SET, MENUNAME_RESPONSE, g_sParentMenu + "|" + g_sSubMenu, "");
         //set settings
         g_iUnlockCollar=0;
         g_iClearRLVRestions=0;
@@ -729,7 +734,7 @@ default
             // our parent menu requested to receive buttons, so send ours
         {
 
-            llMessageLinked(LINK_SET, MENUNAME_RESPONSE, g_sParentMenu + "|" + g_sSubMenu, NULL_KEY);
+            llMessageLinked(LINK_SET, MENUNAME_RESPONSE, g_sParentMenu + "|" + g_sSubMenu, "");
         }
         else if (iNum == MENUNAME_RESPONSE)
             // a button is sned ot be added to a plugin

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////////
 // ------------------------------------------------------------------------------ //
 //                            OpenNC - auth                                       //
-//                            version 3.950                                       //
+//                            version 3.960                                       //
 // ------------------------------------------------------------------------------ //
 // Licensed under the GPLv2 with additional requirements specific to Second Life® //
 // and other virtual metaverse environments.                                      //
@@ -420,6 +420,11 @@ integer UserCommand(integer iNum, string sStr, key kID) // here iNum: auth value
     {
         AuthMenu(kID, iNum);
     }
+    else if (sStr == "refreshmenu")
+            {
+                llSleep (0.1);
+                llMessageLinked(LINK_SET, MENUNAME_RESPONSE, g_sParentMenu + "|" + g_sSubMenu, "");
+            }
     else if (sStr == "settings" || sStr == "listowners")
     {   //say owner, secowners, group
         if (iNum == COMMAND_OWNER || kID == g_kWearer)
@@ -786,7 +791,7 @@ default
                         Notify(kOwner, llKey2Name(g_kWearer) + " has run away!",FALSE);
                     }
                 }
-                llMessageLinked(LINK_THIS, LM_SETTING_DELETE, g_sScript + "all", NULL_KEY);
+                llMessageLinked(LINK_THIS, LM_SETTING_DELETE, g_sScript + "all", "");
                 Notify(g_kWearer, "Runaway finished, the " + CTYPE + " will now release locks!",FALSE);
                 // moved reset request from settings to here to allow noticifation of owners.
                 llMessageLinked(LINK_SET, COMMAND_OWNER, "clear", kID); // clear RLV restrictions
@@ -870,7 +875,7 @@ default
         }
         else if (iNum == MENUNAME_REQUEST && sStr == g_sParentMenu)
         {
-            llMessageLinked(LINK_SET, MENUNAME_RESPONSE, g_sParentMenu + "|" + g_sSubMenu, "");
+             llMessageLinked(LINK_SET, MENUNAME_RESPONSE, g_sParentMenu + "|" + g_sSubMenu, "");
         }
         else if (iNum == COMMAND_SAFEWORD)
         {
@@ -883,7 +888,7 @@ default
                 key kOwner = (key)llList2String(g_lOwners, n);
                 Notify(kOwner, "Your sub " + sSubName + " has used the safeword. Please check on " + sSubFirstName +"'s well-being and if further care is required.",FALSE);
             }
-            llMessageLinked(LINK_THIS, INTERFACE_RESPONSE, "safeword", NULL_KEY);
+            llMessageLinked(LINK_THIS, INTERFACE_RESPONSE, "safeword", "");
         }        
         else if (iNum == ATTACHMENT_REQUEST)
         {

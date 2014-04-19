@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////////
 // ------------------------------------------------------------------------------ //
 //                            OpenNC - texture cuff                               //
-//                            version 3.950                                       //
+//                            version 3.960                                       //
 // ------------------------------------------------------------------------------ //
 // Licensed under the GPLv2 with additional requirements specific to Second Life® //
 // and other virtual metaverse environments.                                      //
@@ -98,7 +98,7 @@ string GetDefaultTexture(string ele)
 {
     integer i = llListFindList(g_lTextureDefaults, [ele]);
     if (~i) return llList2String(g_lTextureDefaults, i + 1);
-    return NULL_KEY;
+    return "";
 }
 
 integer GetIsLeashTex(string sInvName)
@@ -264,7 +264,7 @@ SetElementTexture(string sElement, string sTex)
     if (~iIndex) g_lTextures = llListReplaceList(g_lTextures, [sTex], iIndex + 1, iIndex + 1);
     else g_lTextures += [s_CurrentElement, sTex];
     //save to settings
-    llMessageLinked(LINK_SET, LM_SETTING_SAVE, g_sScript + sElement + "=" + sTex, NULL_KEY);
+    llMessageLinked(LINK_SET, LM_SETTING_SAVE, g_sScript + sElement + "=" + sTex, "");
 }
 string DumpSettings(string sep)
 {
@@ -297,7 +297,7 @@ default
         }
         // we need to unify the initialization of the menu system for 3.5
         llSleep(1.0);
-        llMessageLinked(LINK_SET, MENUNAME_RESPONSE, g_sParentMenu + "|" + g_sSubMenu, NULL_KEY);
+        llMessageLinked(LINK_SET, MENUNAME_RESPONSE, g_sParentMenu + "|" + g_sSubMenu, "");
         //-------------extra cuffs-------------
         g_nCmdChannel = nGetOwnerChannel(g_nCmdChannelOffset); // get the owner defined channel
         //---------end extra cuffs-------------
@@ -315,7 +315,7 @@ default
         {      
     // a change of texture has occured, make sure the cuff will try to set identical to the collar
             list lParams2 = llParseString2List(sMsg3, ["="], []);
-            SendCmd("*",g_szTextureChangeCmd + "=" + llList2String(lParams2, 0) + "=" + llList2String(lParams2, 1),NULL_KEY);//send texture change to other cuffs
+            SendCmd("*",g_szTextureChangeCmd + "=" + llList2String(lParams2, 0) + "=" + llList2String(lParams2, 1),"");//send texture change to other cuffs
             SetElementTexture(llList2String(lParams2,0),szStripSpaces(llList2String(lParams2,1)));//send the texture change to this cuff
         }
         //---------end extra cuffs-------------
@@ -341,6 +341,11 @@ default
                     s_CurrentElement = "";
                     ElementMenu(kID, iNum);
                 }
+            }
+            else if (sStr == "refreshmenu")
+            {
+                lButtons = [];
+                llMessageLinked(LINK_SET, MENUNAME_REQUEST, g_sSubMenu, "");
             }
             else if (llGetSubString(sStr,0,13) == "lockappearance")
             {
@@ -429,7 +434,7 @@ default
         }
         else if (iNum == MENUNAME_REQUEST && sStr == g_sParentMenu)
         {
-            llMessageLinked(LINK_SET, MENUNAME_RESPONSE, g_sParentMenu + "|" + g_sSubMenu, NULL_KEY);
+            llMessageLinked(LINK_SET, MENUNAME_RESPONSE, g_sParentMenu + "|" + g_sSubMenu, "");
         }
         else if (iNum == DIALOG_RESPONSE)
         {
@@ -472,7 +477,7 @@ default
                         SetElementTexture(s_CurrentElement, sTex);
                         //-------------extra cuffs-------------
                         //send to other cuffs
-                        SendCmd("*",g_szTextureChangeCmd+"="+s_CurrentElement+"="+sTex,NULL_KEY);
+                        SendCmd("*",g_szTextureChangeCmd+"="+s_CurrentElement+"="+sTex,"");
                         //---------end extra cuffs-------------
                         TextureMenu(kAv, iPage, iAuth);
                     }

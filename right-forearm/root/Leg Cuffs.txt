@@ -1,4 +1,4 @@
-# OpenNC 8Cuffs legs 3.950
+# OpenNC 8Cuffs legs 3.960
 Chain Only|*none*|rllc=lllc
 Belly|cuff-belly|irllc=illlc~rulc=lulc
 Butterfly|cuff-butterfly|rllc=lllc~lllc=lulc~rllc=rulc~ilulc=locbelt~irulc=rocbelt
@@ -10,3 +10,13 @@ HogtieBack|hogtieb|orllc=orlac~olllc=ollac~llac=rlac~rllc=lllc~ollac=olulc~orlac
 Kneel|cuff-kneel|irllc=illlc~orllc=orulc~olllc=olulc
 Splits|cuff-splits|orulc=rocbelt~olulc=locbelt
 Sit|cuff-sit|irllc=illlc~irulc=ilulc~olllc=olulc~orllc=orulc
+Plead|plead|irulc=ilulc~irllc=illlc
+Squirm|squirm|rllc=lllc~llac=rlac~illac=illlc~irllc=irlac
+Submit|submit|irulc=ilulc~irllc=illlc~illac=irlac
+Tower|tower|irulc=ilulc~rllc=lllc~illlc=ilac~irllc=irlac
+Bend|bendover|irulc=ilulc~irllc=illlc~ollac=ollc~orlac=orlc~illac=irlac
+Bracelets|bracelets|illac=irlac~illlc=irllc~olllc=ollac~orllc=orllc
+Doggie|doggie|irlac=illac~irllc=illlc
+Kneelup|kneelup|ilulc=irulc~iruac=iluac~irllc=illlc~irlac=illac
+Nadu|nadu|irllc=illlc~locbelt=ollac~rocbelt=orlac
+Naduw|naduw|irllc=illlc~locbelt=ollac~rocbelt=orlac~luac=ruac

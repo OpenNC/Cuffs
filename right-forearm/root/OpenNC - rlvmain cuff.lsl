@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////////
 // ------------------------------------------------------------------------------ //
 //                            OpenNC - rlvmain cuff                               //
-//                            version 3.950                                       //
+//                            version 3.960                                       //
 // ------------------------------------------------------------------------------ //
 // Licensed under the GPLv2 with additional requirements specific to Second Life® //
 // and other virtual metaverse environments.                                      //
@@ -136,8 +136,8 @@ list g_lRestrictions=[];
 list g_lOldRestrictions;
 list g_lOldSources;
 list g_lBaked=[];
-key g_kSitter=NULL_KEY;
-key g_kSitTarget=NULL_KEY;
+key g_kSitter="";
+key g_kSitTarget="";
 integer CMD_ADDSRC = 11;
 integer CMD_REMSRC = 12;
 
@@ -163,7 +163,7 @@ HandleCommand(key kID, string sCommand)
     else
     {
         SendCommand(sStr);
-        if (g_kSitter==NULL_KEY&&llGetSubString(sStr,0,3)=="sit:")
+        if (g_kSitter==""&&llGetSubString(sStr,0,3)=="sit:")
         {
             g_kSitter=kID;
             g_kSitTarget=(key)llGetSubString(sCom,4,-1);
@@ -176,13 +176,13 @@ AddRestriction(key kID, string sBehav)
     integer iSource=llListFindList(g_lSources,[kID]);
     integer iRestr;
     // lock the cuffs for the first coming relay restriction (change the test if we decide that cuffs restrictions should un/lock)
-    if (kID != NULL_KEY && (g_lSources == [] || g_lSources == [NULL_KEY])) ApplyAdd("detach");
+    if (kID != "" && (g_lSources == [] || g_lSources == [""])) ApplyAdd("detach");
     if (iSource==-1)
     {
         g_lSources+=[kID];
         g_lRestrictions+=[sBehav];
         iRestr=-1;
-        if (kID!=NULL_KEY) llMessageLinked(LINK_SET, CMD_ADDSRC,"",kID);
+        if (kID!="") llMessageLinked(LINK_SET, CMD_ADDSRC,"",kID);
     }
     else
     {
@@ -228,7 +228,7 @@ RemRestriction(key kID, string sBehav)
             {
                 g_lRestrictions=llDeleteSubList(g_lRestrictions,iSource, iSource);
                 g_lSources=llDeleteSubList(g_lSources,iSource, iSource);
-                if (kID!=NULL_KEY) llMessageLinked(LINK_SET, CMD_REMSRC,"",kID);
+                if (kID!="") llMessageLinked(LINK_SET, CMD_REMSRC,"",kID);
             }
             else
             {
@@ -237,15 +237,15 @@ RemRestriction(key kID, string sBehav)
             }
             if (sBehav=="unsit"&&g_kSitter==kID)
             {
-                g_kSitter=NULL_KEY;
-                g_kSitTarget=NULL_KEY;
+                g_kSitter="";
+                g_kSitTarget="";
 
             }
             ApplyRem(sBehav);
         }
     }
     // unlock the cuffs for the last going relay restriction (change the test if we decide that cuffs restrictions should un/lock)
-    if (kID != NULL_KEY && (g_lSources == [] || g_lSources == [NULL_KEY])) ApplyRem("detach");
+    if (kID != "" && (g_lSources == [] || g_lSources == [""])) ApplyRem("detach");
 }
 
 ApplyRem(string sBehav)
@@ -296,11 +296,11 @@ Release(key kID, string sPattern)
                 ApplyRem(sBehav);
                 if (sBehav=="unsit"&&g_kSitter==kID) 
                 {
-                    g_kSitter=NULL_KEY;
-                    g_kSitTarget=NULL_KEY;
+                    g_kSitter="";
+                    g_kSitTarget="";
                 }
             }
-            if (g_lSources == [] || g_lSources == [NULL_KEY]) {
+            if (g_lSources == [] || g_lSources == [""]) {
                 ApplyRem("detach"); 
             }
         }
@@ -315,7 +315,7 @@ SafeWord(integer iCollarToo)
     g_lRestrictions=[];
     integer i;
     if (!iCollarToo) {
-        llMessageLinked(LINK_SET,RLV_REFRESH,"",NULL_KEY);
+        llMessageLinked(LINK_SET,RLV_REFRESH,"","");
     }
 }
 // End of book keeping functions
@@ -332,10 +332,15 @@ integer UserCommand(integer iNum, string sStr, key kID)
     { //someone clicked "RLV" on the main menu.  Give them our menu now
         DoMenu(kID, iNum);
     }
-    else if ((sCmd1 == "rlv=on") | (sStr == "rlvon"))
+    else if (sStr == "refreshmenu")
     {
-        llMessageLinked(LINK_SET, LM_SETTING_SAVE, g_sScript + "on=1", NULL_KEY);
-        llMessageLinked(LINK_SET, LM_CUFF_CMD, "rlvon",NULL_KEY);
+        llSleep (0.1);
+        llMessageLinked(LINK_SET, MENUNAME_RESPONSE, g_sParentMenu + "|" + g_sSubMenu, "");
+    }
+    else if ((sCmd1 == "rlv=on") || (sStr == "rlvon"))
+    {
+        llMessageLinked(LINK_SET, LM_SETTING_SAVE, g_sScript + "on=1", "");
+        llMessageLinked(LINK_SET, LM_CUFF_CMD, "rlvon","");
         g_iRLVOn = TRUE;
         g_iVerbose = TRUE;
         if (TRUE) state default;
@@ -346,12 +351,12 @@ integer UserCommand(integer iNum, string sStr, key kID)
         if (sOnOff == "on")
         {
             g_iRLVNotify = TRUE;
-            llMessageLinked(LINK_SET, LM_SETTING_SAVE, g_sScript + "notify=1", NULL_KEY);
+            llMessageLinked(LINK_SET, LM_SETTING_SAVE, g_sScript + "notify=1", "");
         }
         else if (sOnOff == "off")
         {
             g_iRLVNotify = FALSE;
-            llMessageLinked(LINK_SET, LM_SETTING_SAVE, g_sScript + "notify=0", NULL_KEY);
+            llMessageLinked(LINK_SET, LM_SETTING_SAVE, g_sScript + "notify=0", "");
         }
     }
     else if (!g_iRLVOn || !g_iViewerCheck) return TRUE;
@@ -364,14 +369,14 @@ integer UserCommand(integer iNum, string sStr, key kID)
         }
         else
         {
-            llMessageLinked(LINK_SET, RLV_CLEAR, "", NULL_KEY);
+            llMessageLinked(LINK_SET, RLV_CLEAR, "", "");
             SafeWord(TRUE);
         }
     }
-    else if ((sCmd1 == "rlv=on") | (sStr == "rlvon"))
+    else if ((sCmd1 == "rlv=on") || (sStr == "rlvon"))
     {
-        llMessageLinked(LINK_SET, LM_SETTING_SAVE, g_sScript + "on=1", NULL_KEY);
-        llMessageLinked(LINK_SET, LM_CUFF_CMD, "rlvon",NULL_KEY);
+        llMessageLinked(LINK_SET, LM_SETTING_SAVE, g_sScript + "on=1", "");
+        llMessageLinked(LINK_SET, LM_CUFF_CMD, "rlvon","");
         g_iRLVOn = TRUE;
         g_iVerbose = TRUE;
         if (TRUE) state default;
@@ -381,10 +386,10 @@ integer UserCommand(integer iNum, string sStr, key kID)
         if (iNum == COMMAND_OWNER)
         {
             g_iRLVOn = FALSE;
-            llMessageLinked(LINK_SET, LM_SETTING_SAVE, g_sScript + "on=0", NULL_KEY);
+            llMessageLinked(LINK_SET, LM_SETTING_SAVE, g_sScript + "on=0", "");
             SafeWord(TRUE);
-            llMessageLinked(LINK_SET, RLV_OFF, "", NULL_KEY);
-            llMessageLinked(LINK_SET, LM_CUFF_CMD, "rlvoff",NULL_KEY);
+            llMessageLinked(LINK_SET, RLV_OFF, "", "");
+            llMessageLinked(LINK_SET, LM_CUFF_CMD, "rlvoff","");
         }
         else Notify(kID, "Sorry, only owner may disable Restrained Love functions", FALSE);
     }
@@ -395,7 +400,7 @@ integer UserCommand(integer iNum, string sStr, key kID)
         else sOut+="s:";
         integer i;
         for (i=0;i<llGetListLength(g_lSources);i++)
-            if (llList2String(g_lSources,i)!=NULL_KEY) sOut+="\n"+llKey2Name((key)llList2String(g_lSources,i))+" ("+llList2String(g_lSources,i)+"): "+llList2String(g_lRestrictions,i);
+            if (llList2String(g_lSources,i)!="") sOut+="\n"+llKey2Name((key)llList2String(g_lSources,i))+" ("+llList2String(g_lSources,i)+"): "+llList2String(g_lRestrictions,i);
         else sOut+="\nThis " + CTYPE + ": "+llList2String(g_lRestrictions,i);
         Notify(kID,sOut,FALSE);
     }
@@ -410,9 +415,9 @@ default
         g_kWearer = llGetOwner();
         //request setting from DB
         llSleep(1.0);
-        llMessageLinked(LINK_SET, LM_SETTING_REQUEST, g_sScript + "on", NULL_KEY);
+        llMessageLinked(LINK_SET, LM_SETTING_REQUEST, g_sScript + "on", "");
         // Ensure that menu script knows we're here.
-        llMessageLinked(LINK_SET, MENUNAME_RESPONSE, g_sParentMenu + "|" + g_sSubMenu, NULL_KEY);
+        llMessageLinked(LINK_SET, MENUNAME_RESPONSE, g_sParentMenu + "|" + g_sSubMenu, "");
         if (g_iRLVOn)
         {
             CheckVersion(FALSE);//NG hack to force it to check RLV
@@ -451,11 +456,12 @@ default
                     else if (!(integer)sValue)
                     {
                         state checked;
-                        llMessageLinked(LINK_SET, RLV_OFF, "", NULL_KEY);
+                        llMessageLinked(LINK_SET, RLV_OFF, "", "");
                     }
                     else
                     {
                         g_iRLVOn = TRUE;
+                        llMessageLinked(LINK_SET, LM_CUFF_CMD, "rlvon","");//send it to slave cuffs
                         //check viewer version
                         CheckVersion(FALSE);
                     }
@@ -469,7 +475,7 @@ default
         }
         else if (iNum == MENUNAME_REQUEST && sStr == g_sParentMenu)
         {
-            llMessageLinked(LINK_SET, MENUNAME_RESPONSE, g_sParentMenu + "|" + g_sSubMenu, NULL_KEY);
+            llMessageLinked(LINK_SET, MENUNAME_RESPONSE, g_sParentMenu + "|" + g_sSubMenu, "");
         }
         else if (iNum >= COMMAND_OWNER && iNum <= COMMAND_WEARER && sStr == "menu "+g_sSubMenu)
         {   //someone clicked "RLV" on the main menu.  Tell them we're not ready yet.
@@ -486,14 +492,15 @@ default
             g_iCheckCount = 0;
             //send the version to rlv plugins
             g_iRlvVersion = (integer) llGetSubString(sMsg, 0, 2);
-            llMessageLinked(LINK_SET, RLV_VERSION, (string) g_iRlvVersion, NULL_KEY);
+            llMessageLinked(LINK_SET, RLV_VERSION, (string) g_iRlvVersion, "");
             g_iRLVOn = TRUE;
+            llMessageLinked(LINK_SET, LM_CUFF_CMD, "rlvon","");
             if (g_iRLVNotify)
             {
                 llOwnerSay("Restrained Love functions enabled. " + sMsg + " detected.");
             }
             g_iViewerCheck = TRUE;
-            llMessageLinked(LINK_SET, RLV_ON, "", NULL_KEY);
+            llMessageLinked(LINK_SET, RLV_ON, "", "");
             state checked;
         }
     }
@@ -510,7 +517,7 @@ default
         { //we've given the viewer a full 60 seconds
             g_iViewerCheck = FALSE;
             g_iRLVOn = FALSE;
-            llMessageLinked(LINK_SET, RLV_OFF, "", NULL_KEY);
+            llMessageLinked(LINK_SET, RLV_OFF, "", "");
             Notify(g_kWearer,"Could not detect Restrained Love Viewer.  Restrained Love functions disabled.",TRUE);
             if (llGetListLength(g_lRestrictions) > 0 && llGetListLength(g_lOwners) > 0) {
                 string sMsg = llKey2Name(g_kWearer)+" appears to have logged in without using the Restrained Love Viewer.  Their Restrained Love functions have been disabled.";
@@ -563,13 +570,13 @@ state checked
             llSleep(2);
             // wake up other plugins anyway (tell them that RLV is still
             // active, as it is likely they did reset themselves
-            llMessageLinked(LINK_SET, RLV_REFRESH, "", NULL_KEY);         
+            llMessageLinked(LINK_SET, RLV_REFRESH, "", "");         
         }
     }
 
     attach(key kID)
     {
-        if (kID == NULL_KEY) g_iLastDetach = llGetUnixTime(); //remember when the cuffs was detached last
+        if (kID == "") g_iLastDetach = llGetUnixTime(); //remember when the cuffs was detached last
     }
 
     state_entry()
@@ -577,9 +584,9 @@ state checked
         g_lMenu = [];
         if (g_iRLVOn && g_iViewerCheck)//we don't need this since cuffs don't have submenu for RLV
         {   //ask RLV plugins to tell us about their rlv submenus
-            llMessageLinked(LINK_SET, MENUNAME_REQUEST, g_sSubMenu, NULL_KEY);
+            llMessageLinked(LINK_SET, MENUNAME_REQUEST, g_sSubMenu, "");
             //tell rlv plugins to reinstate restrictions  (and wake up the relay listener... so that it can at least hear !pong's!
-            llMessageLinked(LINK_SET, RLV_REFRESH, "", NULL_KEY);
+            llMessageLinked(LINK_SET, RLV_REFRESH, "", "");
             llSleep(5); //Make sure the relay is ready before pinging
             //ping inworld object so that they reinstate their restrictions
             integer i;
@@ -598,14 +605,14 @@ state checked
             llSetTimerEvent(2);
         }
         // Ensure that menu script knows we're here.
-        llMessageLinked(LINK_SET, MENUNAME_RESPONSE, g_sParentMenu + "|" + g_sSubMenu, NULL_KEY);
+        llMessageLinked(LINK_SET, MENUNAME_RESPONSE, g_sParentMenu + "|" + g_sSubMenu, "");
     }
 
     link_message(integer iSender, integer iNum, string sStr, key kID) 
     {
         if (iNum == MENUNAME_REQUEST && sStr == g_sParentMenu) 
         {
-            llMessageLinked(LINK_SET, MENUNAME_RESPONSE, g_sParentMenu + "|" + g_sSubMenu, NULL_KEY);
+            llMessageLinked(LINK_SET, MENUNAME_RESPONSE, g_sParentMenu + "|" + g_sSubMenu, "");
         }
         else if (iNum == COMMAND_NOAUTH) return;
         else if (UserCommand(iNum, sStr, kID)) return;
@@ -693,7 +700,7 @@ state checked
             }
             else if (iNum == COMMAND_SAFEWORD)
             {// safeWord used, clear rlv settings
-                llMessageLinked(LINK_SET, RLV_CLEAR, "", NULL_KEY);
+                llMessageLinked(LINK_SET, RLV_CLEAR, "", "");
                 SafeWord(TRUE);
             }
             else if (iNum == LM_SETTING_SAVE)

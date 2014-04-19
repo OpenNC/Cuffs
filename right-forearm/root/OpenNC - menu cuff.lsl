@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////////
 // ------------------------------------------------------------------------------ //
 //                            OpenNC - menu cuff                                  //
-//                            version 3.950                                       //
+//                            version 3.960                                       //
 // ------------------------------------------------------------------------------ //
 // Licensed under the GPLv2 with additional requirements specific to Second Life® //
 // and other virtual metaverse environments.                                      //
@@ -24,7 +24,7 @@ list g_lMenuNames = ["Main", "Help/Debug"];
 list g_lMenus;//exists in parallel to g_lMenuNames, each entry containing a pipe-delimited string with the items for the corresponding menu
 list g_lMenuPrompts = [
 //WS: let's query for version properly; the static number is supposed to be a reminder not a solution
-"\n\nWelcome to the Main Menu\nOpenNC Version 3.950",
+"\n\nWelcome to the Main Menu\nOpenNC Version 3.960",
 "\n\nPlease think about joining the support group, search for OpenNC in group search",
 "\n\nThis menu grants access to every installed AddOn.\n"
 ];
@@ -101,7 +101,7 @@ MenuInit()
         { //make each submenu appear in Main
             HandleMenuResponse("Main|" + sName);
             //request children of each submenu
-            llMessageLinked(LINK_SET, MENUNAME_REQUEST, sName, NULL_KEY);            
+            llMessageLinked(LINK_SET, MENUNAME_REQUEST, sName, "");            
         }
     }
     //give the help menu GIVECARD and REFRESH_MENU buttons    
@@ -127,10 +127,26 @@ HandleMenuResponse(string entry)
             lGuts = llListSort(lGuts, 1, TRUE);
             g_lMenus = llListReplaceList(g_lMenus, [llDumpList2String(lGuts, "|")], iMenuIndex, iMenuIndex);
         }
-    }    
-    else
-    {
     }
+}
+
+HandleMenuRemove(string sStr)
+{
+    list lParams = llParseString2List(sStr, ["|"], []);
+    string parent = llList2String(lParams, 0);
+    string child = llList2String(lParams, 1);
+    integer iMenuIndex = llListFindList(g_lMenuNames, [parent]);
+    if (iMenuIndex != -1)
+    {
+        list lGuts = llParseString2List(llList2String(g_lMenus, iMenuIndex), ["|"], []);
+        integer gutiIndex = llListFindList(lGuts, [child]);
+        //only remove if it's there
+        if (gutiIndex != -1)        
+        {
+            lGuts = llDeleteSubList(lGuts, gutiIndex, gutiIndex);
+            g_lMenus = llListReplaceList(g_lMenus, [llDumpList2String(lGuts, "|")], iMenuIndex, iMenuIndex);                    
+        }        
+    } 
 }
 
 integer UserCommand(integer iNum, string sStr, key kID)
@@ -152,9 +168,10 @@ integer UserCommand(integer iNum, string sStr, key kID)
     }
     else if (sStr == "chelp") llGiveInventory(kID, HELPCARD);                
     else if (sStr == "cdebug") Menu("Help/Debug", kID, iNum);
-    else if (sCmd == "refreshmenu")
+    else if (sCmd == "refreshmenu1")
     {
         llDialog(kID, "\n\nRebuilding menu.\n\nThis may take several seconds.", [], -341321);
+        llMessageLinked(LINK_SET, COMMAND_NOAUTH, "refreshmenu", kID);
         llResetScript();
     }
     return TRUE;
@@ -185,22 +202,8 @@ default
             HandleMenuResponse(sStr);
         }
         else if (iNum == MENUNAME_REMOVE)
-        { //sStr should be in form of parentmenu|childmenu
-            list lParams = llParseString2List(sStr, ["|"], []);
-            string parent = llList2String(lParams, 0);
-            string child = llList2String(lParams, 1);
-            integer iMenuIndex = llListFindList(g_lMenuNames, [parent]);
-            if (iMenuIndex != -1)
-            {
-                list lGuts = llParseString2List(llList2String(g_lMenus, iMenuIndex), ["|"], []);
-                integer gutiIndex = llListFindList(lGuts, [child]);
-                //only remove if it's there
-                if (gutiIndex != -1)        
-                {
-                    lGuts = llDeleteSubList(lGuts, gutiIndex, gutiIndex);
-                    g_lMenus = llListReplaceList(g_lMenus, [llDumpList2String(lGuts, "|")], iMenuIndex, iMenuIndex);                    
-                }        
-            }
+        {
+            HandleMenuRemove(sStr);
         }
         else if (iNum == DIALOG_RESPONSE)
         {
@@ -215,12 +218,7 @@ default
                 //remove stride from g_lMenuIDs
                 //we have to subtract from the index because the dialog id comes in the middle of the stride
                 g_lMenuIDs = llDeleteSubList(g_lMenuIDs, iMenuIndex - 1, iMenuIndex - 2 + g_iMenuStride);
-                if (sMessage == UPMENU)
-                {
-//                    Menu("Main", kAv, iAuth); //commented out to stop double menu's
-                }
-                else
-                {
+
                     if (sMessage == USER_GROUP)
                     {
                         llInstantMessage(kAv,"\n\nJoin secondlife:///app/group/" + USER_GROUP_ID + "/about " + "for friendly support.\n");
@@ -228,17 +226,20 @@ default
                     }
                     else if (sMessage == REFRESH_MENU)
                     {//send a command telling other plugins to rebuild their menus
-                        UserCommand(iAuth, "refreshmenu", kAv);
+                        UserCommand(iAuth, "refreshmenu1", kAv);
                     }
                     else if (sMessage == helpcard)
                     {//give out the help card
                         llGiveInventory(kAv, HELPCARD);
                     }
+                    else if (sMessage == UPMENU)
+                    {
+                        Menu("Main", kAv, iAuth);
+                    }
                     else
                     {
                         llMessageLinked(LINK_SET, iAuth, "menu "+sMessage, kAv);
                     }
-                }
             }
         }
         else if (iNum == DIALOG_TIMEOUT)

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////////
 // ------------------------------------------------------------------------------ //
 //                            OpenNC - color cuff                                 //
-//                            version 3.950                                       //
+//                            version 3.960                                       //
 // ------------------------------------------------------------------------------ //
 // Licensed under the GPLv2 with additional requirements specific to Second Life® //
 // and other virtual metaverse environments.                                      //
@@ -234,7 +234,7 @@ SetElementColor(string sElement, vector vColor)
         g_lColorSettings = llListReplaceList(g_lColorSettings, [sStrColor], iIndex + 1, iIndex + 1);
     }
     //save to settings
-    llMessageLinked(LINK_SET, LM_SETTING_SAVE, g_sScript + sElement + "=" + sStrColor, NULL_KEY);
+    llMessageLinked(LINK_SET, LM_SETTING_SAVE, g_sScript + sElement + "=" + sStrColor, "");
 }
 
 integer StartsWith(string sHayStack, string sNeedle) // http://wiki.secondlife.com/wiki/llSubStringIndex
@@ -267,7 +267,7 @@ default
         g_kWearer = llGetOwner();
         BuildElementList();//loop through non-root prims, build element list
         llSleep(1.0);
-        llMessageLinked(LINK_SET, MENUNAME_RESPONSE, g_sParentMenu + "|" + g_sSubMenu, NULL_KEY);
+        llMessageLinked(LINK_SET, MENUNAME_RESPONSE, g_sParentMenu + "|" + g_sSubMenu, "");
         //-------------extra cuffs-------------
         g_nCmdChannel = nGetOwnerChannel(g_nCmdChannelOffset); // get the owner defined channel
         //---------end extra cuffs-------------
@@ -285,13 +285,13 @@ default
         {
     // A change of color has occured, make sure the cuff will try to set identical to the collar
             list lParams2 = llParseString2List(sMsg3, ["="], []);
-            SendCmd("*",g_szColorChangeCmd+"=" + sMsg3,NULL_KEY);//send color change to other cuffs
+            SendCmd("*",g_szColorChangeCmd+"=" + sMsg3,"");//send color change to other cuffs
             SetElementColor(llList2String(lParams2,0),(vector)szStripSpaces(llList2String(lParams2,1))); //send the color change to this cuff
         }
         //---------end extra cuffs-------------
         if (sStr == "reset" && (iNum == COMMAND_OWNER || iNum == COMMAND_WEARER))
         {//clear saved settings
-            llMessageLinked(LINK_SET, LM_SETTING_DELETE, g_sScript + "all", NULL_KEY);
+            llMessageLinked(LINK_SET, LM_SETTING_DELETE, g_sScript + "all", "");
             llResetScript();
         }
         else if (iNum >= COMMAND_OWNER && iNum <= COMMAND_WEARER)
@@ -307,6 +307,11 @@ default
                     out += llList2String(g_lColorSettings, i + 1);
                 }
                 Notify(kID, "Color Settings: " + out,FALSE);
+            }
+            else if (sStr == "refreshmenu")
+            {
+                g_lButtons = [];
+                llMessageLinked(LINK_SET, MENUNAME_REQUEST, g_sSubMenu, "");
             }
             else if (StartsWith(sStr, "setcolor"))
             {
@@ -380,7 +385,7 @@ default
         }
         else if (iNum == MENUNAME_REQUEST && sStr == g_sParentMenu)
         {
-            llMessageLinked(LINK_SET, MENUNAME_RESPONSE, g_sParentMenu + "|" + g_sSubMenu, NULL_KEY);
+            llMessageLinked(LINK_SET, MENUNAME_RESPONSE, g_sParentMenu + "|" + g_sSubMenu, "");
         }
         else if (iNum == DIALOG_RESPONSE)
         {
@@ -441,7 +446,7 @@ default
                     SetElementColor(g_sCurrentElement, vColor);
                     //-------------extra cuffs-------------
                     //send to other cuffs
-                    SendCmd("*",g_szColorChangeCmd+"="+g_sCurrentElement+"="+(string)vColor,NULL_KEY);
+                    SendCmd("*",g_szColorChangeCmd+"="+g_sCurrentElement+"="+(string)vColor,"");
                     //---------end extra cuffs-------------
                     ColorMenu(kAv, iAuth);
                 }

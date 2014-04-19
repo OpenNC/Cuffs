@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////////
 // ------------------------------------------------------------------------------ //
 //                            OpenNC - arms                                       //
-//                            version 3.960                                       //
+//                            version 3.950                                       //
 // ------------------------------------------------------------------------------ //
 // Licensed under the GPLv2 with additional requirements specific to Second Life® //
 // and other virtual metaverse environments.                                      //
@@ -89,9 +89,23 @@ integer LoadLocksParse( key queryid, string data)
     return 1;
 }
 
+key ShortKey()
+{//just pick 8 random hex digits and pad the rest with 0.  Good enough for dialog uniqueness.
+    string chars = "0123456789abcdef";
+    integer length = 16;
+    string out;
+    integer n;
+    for (n = 0; n < 8; n++)
+    {
+        integer index = (integer)llFrand(16);//yes this is correct; an integer cast rounds towards 0.  See the llFrand wiki entry.
+        out += llGetSubString(chars, index, index);
+    }
+    return (key)(out + "-0000-0000-0000-000000000000");
+}
+
 key Dialog(key rcpt, string prompt, list choices, list utilitybuttons, integer page)
 {
-    key id = llGenerateKey();
+    key id = ShortKey();
     llMessageLinked(LINK_SET, DIALOG, (string)rcpt + "|" + prompt + "|" + (string)page + "|" + llDumpList2String(choices, "`") + "|" + llDumpList2String(utilitybuttons, "`"), id);
     return id;
 }
@@ -246,9 +260,9 @@ default
         g_nCmdChannel= nGetOwnerChannel(g_nCmdChannelOffset);
 
         llSleep(1.0);
-        llMessageLinked(LINK_SET, MENUNAME_REQUEST, submenu, "");
-        llMessageLinked(LINK_SET, MENUNAME_RESPONSE, parentmenu + "|" + submenu, "");
-        LoadLocks("Arm Cuffs");
+        llMessageLinked(LINK_SET, MENUNAME_REQUEST, submenu, NULL_KEY);
+        llMessageLinked(LINK_SET, MENUNAME_RESPONSE, parentmenu + "|" + submenu, NULL_KEY);
+        LoadLocks("gArm Cuffs");
         g_keyWearer=llGetOwner();
     }
     dataserver( key queryid, string data ) 
@@ -258,7 +272,7 @@ default
     changed(integer change) {
         if ( change & CHANGED_INVENTORY ) 
         {
-            LoadLocks("Arm Cuffs");
+            LoadLocks("gArm Cuffs");
         }
     }
 
@@ -296,12 +310,12 @@ default
             else if (str == "refreshmenu")
             {
                 buttons = [];
-                llMessageLinked(LINK_SET, MENUNAME_REQUEST, submenu, "");
+                llMessageLinked(LINK_SET, MENUNAME_REQUEST, submenu, NULL_KEY);
             }
         }
         else if (nNum == MENUNAME_REQUEST)
         {
-            llMessageLinked(LINK_SET, MENUNAME_RESPONSE, parentmenu + "|" + submenu, "");
+            llMessageLinked(LINK_SET, MENUNAME_RESPONSE, parentmenu + "|" + submenu, NULL_KEY);
         }
         else if (nNum == SUBMENU && str == submenu)
         {

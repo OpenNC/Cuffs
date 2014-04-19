@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////////
 // ------------------------------------------------------------------------------ //
-//                            OpenNC - arms                                       //
-//                            version 3.960                                       //
+//                            OpenNC - legs cuff                                 //
+//                            version 3.950                                       //
 // ------------------------------------------------------------------------------ //
 // Licensed under the GPLv2 with additional requirements specific to Second Life® //
 // and other virtual metaverse environments.                                      //
@@ -13,15 +13,15 @@
 ////////////////////////////////////////////////////////////////////////////////////
 list elements;
 string parentmenu = "Cuff Poses";
-string submenu = "Arm Cuffs";
-string dbtoken = "cuff-arms";
-string CLCMD = "carms";
+string submenu = "Leg Cuffs";
+string dbtoken = "cuff-legs";
+string CLCMD = "clegs";
 list buttons;
 integer lastrank = 10000; //in this integer, save the rank of the person who posed the av, according to message map.  10000 means unposed
 key g_keyDialogID;
 key g_keyWearer;
 //MESSAGE MAP
-integer COMMAND_NOAUTH = 0;//do we still need this?
+integer COMMAND_NOAUTH = 0;
 integer COMMAND_OWNER = 500;
 integer COMMAND_WEARER = 503;
 integer MENUNAME_REQUEST = 3000;
@@ -29,10 +29,10 @@ integer MENUNAME_RESPONSE = 3001;
 integer SUBMENU = 3002;
 integer DIALOG = -9000;
 integer DIALOG_RESPONSE = -9001;
-integer LM_CUFF_CMD  = -551001;// used as channel for linkemessages - sending commands
+integer LM_CUFF_CMD = -551001;// used as channel for linkemessages - sending commands
 integer LM_CUFF_ANIM = -551002;// used as channel for linkedmessages - sending animation cmds
 integer LM_CUFF_CHAINTEXTURE = -551003;// used as channel for linkedmessages - sending the choosen texture to the cuff
-list g_lstModTokens = ["rlac","orlac","irlac"]; // list of attachment points in this cuff, only need for the main cuff, so i dont want to read that from prims
+list    g_lstModTokens    = ["rlac","orlac"]; // list of attachment points in this cuff, only need for the main cuff, so i dont want to read that from prims
 string g_szLGChainTexture="";
 string UPMENU = "BACK";
 //===============================================================================
@@ -47,6 +47,28 @@ list    g_lstChains;
 integer pos_line;
 string pos_file;
 key pos_query;
+
+key ShortKey()
+{//just pick 8 random hex digits and pad the rest with 0.  Good enough for dialog uniqueness.
+    string chars = "0123456789abcdef";
+    integer length = 16;
+    string out;
+    integer n;
+    for (n = 0; n < 8; n++)
+    {
+        integer index = (integer)llFrand(16);//yes this is correct; an integer cast rounds towards 0.  See the llFrand wiki entry.
+        out += llGetSubString(chars, index, index);
+    }
+
+    return (key)(out + "-0000-0000-0000-000000000000");
+}
+
+key Dialog(key rcpt, string prompt, list choices, list utilitybuttons, integer page)
+{
+    key id = ShortKey();
+    llMessageLinked(LINK_SET, DIALOG, (string)rcpt + "|" + prompt + "|" + (string)page + "|" + llDumpList2String(choices, "`") + "|" + llDumpList2String(utilitybuttons, "`"), id);
+    return id;
+}
 
 LoadLocks(string file)
 {
@@ -79,21 +101,13 @@ integer LoadLocksParse( key queryid, string data)
         return 1;
     }
     list lock = llParseString2List( data, ["|"], [] );
-    if ( llGetListLength(lock) != 3 )
-    {
+    if ( llGetListLength(lock) != 3 ) {
         return 1;
     }
     g_lstLocks += (list)llList2String(lock,0);
     g_lstAnims += (list)llList2String(lock,1);
     g_lstChains += (list)llList2String(lock,2);
     return 1;
-}
-
-key Dialog(key rcpt, string prompt, list choices, list utilitybuttons, integer page)
-{
-    key id = llGenerateKey();
-    llMessageLinked(LINK_SET, DIALOG, (string)rcpt + "|" + prompt + "|" + (string)page + "|" + llDumpList2String(choices, "`") + "|" + llDumpList2String(utilitybuttons, "`"), id);
-    return id;
 }
 //===============================================================================
 //= parameters   :  integer nOffset        Offset to make sure we use really a unique channel
@@ -145,12 +159,15 @@ SendCmd( string szSendTo, string szCmd, key keyID )
 DoChains( key keyID, string szChain, string szLink )
 {
     list    lstParsed = llParseString2List( szChain, [ "~" ], [] );
+
     integer nCnt = llGetListLength(lstParsed);
     integer i = 0;
+
     for (i = 0; i < nCnt; i++ )
     {
         Chains(keyID, llList2String(lstParsed, i), szLink);
     }
+
     lstParsed = [];
 }
 //===============================================================================
@@ -185,20 +202,17 @@ Chains(key keyID, string szChain, string szLink)
     }
 
     if ( llListFindList(g_lstModTokens,[szTo]) != -1 )
-    {
         llMessageLinked( LINK_SET, LM_CUFF_CMD, "chain=" + szChain + "=" + szCmd, llGetKey() );
-    }
     else
-    {
         SendCmd(szTo, "chain=" + szChain + "=" + szCmd, llGetKey());
-    }
 }
 
 CallAnim( string szMsg, key keyID )
 {
-    integer nIdx    = -1;
-    string    szAnim    = "";
-    string    szChain    = "";
+
+    integer nIdx = -1;
+    string  szAnim = "";
+    string   szChain = "";
     if ( g_szActAnim != "")
         nIdx    = llListFindList(g_lstLocks, [g_szActAnim]);
     if ( nIdx != -1 )
@@ -209,7 +223,7 @@ CallAnim( string szMsg, key keyID )
     if ( szMsg == "Stop" )
     {
         g_szActAnim = "";
-        llMessageLinked( LINK_SET, LM_CUFF_ANIM, "a:Stop", keyID );
+        llMessageLinked( LINK_SET, LM_CUFF_ANIM, "l:Stop", keyID );
     }
     else
     {
@@ -219,7 +233,15 @@ CallAnim( string szMsg, key keyID )
             g_szActAnim = szMsg;
             szAnim    = llList2String(g_lstAnims, nIdx);
             szChain    = llList2String(g_lstChains, nIdx);
-            llMessageLinked( LINK_SET, LM_CUFF_ANIM, "a:"+szAnim, keyID );
+
+            if (szAnim=="*none*")
+            {// Cleo: We stop any maybe running leg anim, as on space we dont want anims
+                llMessageLinked( LINK_SET, LM_CUFF_ANIM, "l:Stop", keyID );
+            }
+            else // normal anim mode
+            {
+                llMessageLinked( LINK_SET, LM_CUFF_ANIM, "l:"+szAnim, keyID );
+            }
             DoChains(keyID, szChain, "link");
         }
     }
@@ -231,9 +253,9 @@ DoMenu(key id)
 {
     string prompt = "Pick an option.";
     list mybuttons = buttons + g_lstLocks;
+
     g_keyDialogID=Dialog(id, prompt, mybuttons, [UPMENU], 0);
 }
-
 integer startswith(string haystack, string needle) // http://wiki.secondlife.com/wiki/llSubStringIndex
 {
     return llDeleteSubString(haystack, llStringLength(needle), -1) == needle;
@@ -243,13 +265,12 @@ default
 {
     state_entry()
     {
-        g_nCmdChannel= nGetOwnerChannel(g_nCmdChannelOffset);
-
+        g_nCmdChannel = nGetOwnerChannel(g_nCmdChannelOffset); // get the owner defined channel
+        g_keyWearer = llGetOwner();
         llSleep(1.0);
-        llMessageLinked(LINK_SET, MENUNAME_REQUEST, submenu, "");
-        llMessageLinked(LINK_SET, MENUNAME_RESPONSE, parentmenu + "|" + submenu, "");
-        LoadLocks("Arm Cuffs");
-        g_keyWearer=llGetOwner();
+        llMessageLinked(LINK_SET, MENUNAME_REQUEST, submenu, NULL_KEY);
+        llMessageLinked(LINK_SET, MENUNAME_RESPONSE, parentmenu + "|" + submenu, NULL_KEY);
+        LoadLocks("gLeg Cuffs");
     }
     dataserver( key queryid, string data ) 
     {
@@ -258,7 +279,7 @@ default
     changed(integer change) {
         if ( change & CHANGED_INVENTORY ) 
         {
-            LoadLocks("Arm Cuffs");
+            LoadLocks("gLeg Cuffs");
         }
     }
 
@@ -278,7 +299,7 @@ default
         }
         else if (nNum >= COMMAND_OWNER && nNum <= COMMAND_WEARER)
         {
-            if ( startswith(str,"*:") || startswith(str,"a:") )
+            if ( startswith(str,"*:") || startswith(str,"l:") )
             {
                 if (nNum <= lastrank)
                 {
@@ -296,12 +317,12 @@ default
             else if (str == "refreshmenu")
             {
                 buttons = [];
-                llMessageLinked(LINK_SET, MENUNAME_REQUEST, submenu, "");
+                llMessageLinked(LINK_SET, MENUNAME_REQUEST, submenu, NULL_KEY);
             }
         }
         else if (nNum == MENUNAME_REQUEST)
         {
-            llMessageLinked(LINK_SET, MENUNAME_RESPONSE, parentmenu + "|" + submenu, "");
+            llMessageLinked(LINK_SET, MENUNAME_RESPONSE, parentmenu + "|" + submenu, NULL_KEY);
         }
         else if (nNum == SUBMENU && str == submenu)
         {
@@ -316,6 +337,7 @@ default
                 llResetScript();
             }
         }
+
         else if ( nNum == DIALOG_RESPONSE)
         {
             if (id==g_keyDialogID)
@@ -333,11 +355,11 @@ default
                 {
                     if (message=="*Stop*")
                     {
-                        llMessageLinked(LINK_SET, COMMAND_NOAUTH, "a:Stop", AV);
+                        llMessageLinked(LINK_SET, COMMAND_NOAUTH, "l:Stop", AV);
                     }
                     else
                     {
-                        llMessageLinked(LINK_SET, COMMAND_NOAUTH, "a:"+message, AV);
+                        llMessageLinked(LINK_SET, COMMAND_NOAUTH, "l:"+message, AV);
                     }
                     DoMenu(AV);
                 }

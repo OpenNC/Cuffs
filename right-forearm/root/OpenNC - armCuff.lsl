@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////////
 // ------------------------------------------------------------------------------ //
 //                            OpenNC - armcuff                                    //
-//                            version 3.950                                       //
+//                            version 3.960                                       //
 // ------------------------------------------------------------------------------ //
 // Licensed under the GPLv2 with additional requirements specific to Second Life® //
 // and other virtual metaverse environments.                                      //
@@ -47,7 +47,7 @@ string UPMENU = "BACK";
 //===============================================================================
 string    g_szModToken    = "rlac";         // valid token for this module
 integer    LM_CUFF_CMD        = -551001;        // used as channel for linkemessages - sending commands
-key        g_keyWearer        = NULL_KEY;        // key of the owner/wearer
+key        g_keyWearer        = "";        // key of the owner/wearer
 //===============================================================================
 // END AK - Cuff - functions & variables
 //===============================================================================
@@ -89,23 +89,9 @@ Notify(key keyID, string szMsg, integer nAlsoNotifyWearer)
     }
 }
 
-key ShortKey()
-{//just pick 8 random hex digits and pad the rest with 0.  Good enough for dialog uniqueness.
-    string chars = "0123456789abcdef";
-    integer length = 16;
-    string out;
-    integer n;
-    for (n = 0; n < 8; n++)
-    {
-        integer index = (integer)llFrand(16);//yes this is correct; an integer cast rounds towards 0.  See the llFrand wiki entry.
-        out += llGetSubString(chars, index, index);
-    }
-    return (key)(out + "-0000-0000-0000-000000000000");
-}
-
 key Dialog(key rcpt, string prompt, list choices, list utilitybuttons, integer page)
 {
-    key id = ShortKey();
+    key id = llGenerateKey();
     llMessageLinked(LINK_SET, DIALOG, (string)rcpt + "|" + prompt + "|" + (string)page + "|" + llDumpList2String(choices, "`") + "|" + llDumpList2String(utilitybuttons, "`"), id);
     return id;
 }
@@ -160,8 +146,8 @@ init()
     g_szStayModeToken1=szGetDBPrefix() + g_szStayModeToken1;
     g_szRLVModeToken=szGetDBPrefix() + g_szRLVModeToken;
     llSleep(1.0);
-    llMessageLinked(LINK_SET, MENUNAME_REQUEST, submenu, NULL_KEY);
-    llMessageLinked(LINK_SET, MENUNAME_RESPONSE, parentmenu + "|" + submenu, NULL_KEY);
+    llMessageLinked(LINK_SET, MENUNAME_REQUEST, submenu, "");
+    llMessageLinked(LINK_SET, MENUNAME_RESPONSE, parentmenu + "|" + submenu, "");
 }
 
 default
@@ -191,7 +177,7 @@ default
                 if (szMsg == "refreshmenu")
                 {
                     buttons = [];
-                    llMessageLinked(LINK_SET, MENUNAME_REQUEST, submenu, NULL_KEY);
+                    llMessageLinked(LINK_SET, MENUNAME_REQUEST, submenu, "");
                 }
                 else if (startswith(szMsg,"staymode"))
                 {
@@ -202,21 +188,21 @@ default
                     else if (szMsg=="staymode=off")
                     {// disable the stay mode
                         g_nStayModeAuth=FALSE;
-                        llMessageLinked(LINK_SET, LM_CUFF_CMD, "staymode=off", NULL_KEY);
+                        llMessageLinked(LINK_SET, LM_CUFF_CMD, "staymode=off", "");
                         Notify(keyID,llKey2Name(g_keyWearer)+ " will now be able to move, even when the legs are bound.", TRUE);
                     }
                     else if (szMsg=="staymode=slow")
                     {// enable the slow mode
                         g_nStayModeAuth=nNum;
                         g_nStayModeFixed=FALSE;
-                        llMessageLinked(LINK_SET, LM_CUFF_CMD, "staymode=slow", NULL_KEY);
+                        llMessageLinked(LINK_SET, LM_CUFF_CMD, "staymode=slow", "");
                         Notify(keyID,llKey2Name(g_keyWearer)+ " will now only able to move very slowly, when the legs are bound.", TRUE);
                     }
                     else if (szMsg=="staymode=on")
                     {// enable the stay mode
                         g_nStayModeAuth=nNum;
                         g_nStayModeFixed=TRUE;
-                        llMessageLinked(LINK_SET, LM_CUFF_CMD, "staymode=on", NULL_KEY);
+                        llMessageLinked(LINK_SET, LM_CUFF_CMD, "staymode=on", "");
                         Notify(keyID,llKey2Name(g_keyWearer)+ " will now NOT be able to move, when the legs are bound.", TRUE);
                     }
                     if (g_nRemenu)
@@ -230,7 +216,7 @@ default
                     if (g_nRLVModeAuth>=nNum)
                     {
                         g_nRLVModeAuth=FALSE;
-                        llMessageLinked(LINK_SET, LM_CUFF_CMD, "rlvmode=off", NULL_KEY);
+                        llMessageLinked(LINK_SET, LM_CUFF_CMD, "rlvmode=off", "");
                         Notify(keyID,llKey2Name(g_keyWearer)+ " will now NOT be under RLV restrictions when bound.", TRUE);
                     }
                     else
@@ -246,7 +232,7 @@ default
                 else if (szMsg=="rlvmode=on")
                 {// enable the stay mode
                     g_nRLVModeAuth=nNum;
-                    llMessageLinked(LINK_SET, LM_CUFF_CMD, "rlvmode=on", NULL_KEY);
+                    llMessageLinked(LINK_SET, LM_CUFF_CMD, "rlvmode=on", "");
                     Notify(keyID,llKey2Name(g_keyWearer)+ " will now be under RLV restrictions when bound.", TRUE);
                     if (g_nRemenu)
                     {
@@ -257,7 +243,7 @@ default
             }
             else if (nNum == MENUNAME_REQUEST)
             {
-                llMessageLinked(LINK_SET, MENUNAME_RESPONSE, parentmenu + "|" + submenu, NULL_KEY);
+                llMessageLinked(LINK_SET, MENUNAME_RESPONSE, parentmenu + "|" + submenu, "");
             }
             else if (nNum == MENUNAME_RESPONSE)
             {
@@ -342,7 +328,7 @@ default
     {
         if (change==CHANGED_OWNER)
         {
-            llMessageLinked(LINK_SET, LM_CUFF_CMD, "reset", NULL_KEY);
+            llMessageLinked(LINK_SET, LM_CUFF_CMD, "reset", "");
         }
     }
     on_rez(integer change)//lets do a reset on new owner

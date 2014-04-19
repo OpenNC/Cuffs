@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////////
 // ------------------------------------------------------------------------------ //
 //                            OpenNC - listener cuff                              //
-//                            version 3.950                                       //
+//                            version 3.960                                       //
 // ------------------------------------------------------------------------------ //
 // Licensed under the GPLv2 with additional requirements specific to Second Life® //
 // and other virtual metaverse environments.                                      //
@@ -75,12 +75,12 @@ SetListeners()
     llListenRemove(g_iListenHandleAtt);
     if(g_iListenChan0 == TRUE)
     {
-        g_iListener1 = llListen(0, "", NULL_KEY, "");
+        g_iListener1 = llListen(0, "", "", "");
     }
     g_iInterfaceChannel = (integer)("0x" + llGetSubString(g_kWearer,30,-1));
     if (g_iInterfaceChannel > 0) g_iInterfaceChannel = -g_iInterfaceChannel;
     g_iListenHandleAtt = llListen(g_iInterfaceChannel, "", "", "");
-    g_iListener2 = llListen(g_iListenChan, "", NULL_KEY, "");
+    g_iListener2 = llListen(g_iListenChan, "", "", "");
     llListen(INTERFACE_CHANNEL, "", "", "");//Listen to external Objects here
     llListen(COLLAR_CHANNEL, "", "", "");//Listen to Our Collar here
 }
@@ -149,7 +149,7 @@ default
         // new object/HUD channel block
          if((kID == g_kWearer) && ((sMsg == g_sSafeWord)||(sMsg == "(("+g_sSafeWord+"))")))
         { // safeword can be the safeword or safeword said in OOC chat "((SAFEWORD))"
-            llMessageLinked(LINK_SET, COMMAND_SAFEWORD, "", NULL_KEY);
+            llMessageLinked(LINK_SET, COMMAND_SAFEWORD, "", "");
             llOwnerSay("You used your safeword, your owner will be notified you did.");
         }
         if (sChan == INTERFACE_CHANNEL)//from external objects
@@ -360,7 +360,7 @@ default
                 }
                 else if (sStr == g_sSafeWord)
                 { //safeword used with prefix
-                    llMessageLinked(LINK_SET, COMMAND_SAFEWORD, "", NULL_KEY);
+                    llMessageLinked(LINK_SET, COMMAND_SAFEWORD, "", "");
                     llOwnerSay("You used your safeword, your owner will be notified you did.");
                 }
             }

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////////
 // ------------------------------------------------------------------------------ //
 //                            OpenNC - wings                                      //
-//                            version 3.950                                       //
+//                            version 3.960                                       //
 // ------------------------------------------------------------------------------ //
 // Licensed under the GPLv2 with additional requirements specific to Second Life® //
 // and other virtual metaverse environments.                                      //
@@ -48,24 +48,9 @@ integer pos_line;
 string pos_file;
 key pos_query;
 
-key ShortKey()
-{//just pick 8 random hex digits and pad the rest with 0.  Good enough for dialog uniqueness.
-    string chars = "0123456789abcdef";
-    integer length = 16;
-    string out;
-    integer n;
-    for (n = 0; n < 8; n++)
-    {
-        integer index = (integer)llFrand(16);//yes this is correct; an integer cast rounds towards 0.  See the llFrand wiki entry.
-        out += llGetSubString(chars, index, index);
-    }
-
-    return (key)(out + "-0000-0000-0000-000000000000");
-}
-
 key Dialog(key rcpt, string prompt, list choices, list utilitybuttons, integer page)
 {
-    key id = ShortKey();
+    key id = llGenerateKey();
     llMessageLinked(LINK_SET, DIALOG, (string)rcpt + "|" + prompt + "|" + (string)page + "|" + llDumpList2String(choices, "`") + "|" + llDumpList2String(utilitybuttons, "`"), id);
     return id;
 }
@@ -265,8 +250,8 @@ default
         g_nCmdChannel = nGetOwnerChannel(g_nCmdChannelOffset); // get the owner defined channel
         g_keyWearer = llGetOwner();
         llSleep(1.0);
-        llMessageLinked(LINK_THIS, MENUNAME_REQUEST, submenu, NULL_KEY);
-        llMessageLinked(LINK_THIS, MENUNAME_RESPONSE, parentmenu + "|" + submenu, NULL_KEY);
+        llMessageLinked(LINK_THIS, MENUNAME_REQUEST, submenu, "");
+        llMessageLinked(LINK_THIS, MENUNAME_RESPONSE, parentmenu + "|" + submenu, "");
         LoadLocks("Wing Cuffs");
     }
     dataserver( key queryid, string data ) {
@@ -313,12 +298,12 @@ default
             else if (str == "refreshmenu")
             {
                 buttons = [];
-                llMessageLinked(LINK_SET, MENUNAME_REQUEST, submenu, NULL_KEY);
+                llMessageLinked(LINK_SET, MENUNAME_REQUEST, submenu, "");
             }
         }
         else if (auth == MENUNAME_REQUEST)
         {
-            llMessageLinked(LINK_THIS, MENUNAME_RESPONSE, parentmenu + "|" + submenu, NULL_KEY);
+            llMessageLinked(LINK_THIS, MENUNAME_RESPONSE, parentmenu + "|" + submenu, "");
         }
         else if (auth == SUBMENU && str == submenu)
         {
