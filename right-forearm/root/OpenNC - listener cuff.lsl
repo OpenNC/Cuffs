@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////////
 // ------------------------------------------------------------------------------ //
 //                            OpenNC - listener cuff                              //
-//                            version 3.960                                       //
+//                            version 3.961                                       //
 // ------------------------------------------------------------------------------ //
 // Licensed under the GPLv2 with additional requirements specific to Second Life® //
 // and other virtual metaverse environments.                                      //
@@ -27,6 +27,7 @@ integer COMMAND_WEARER = 503;
 integer COMMAND_COLLAR = 499;
 integer COMMAND_SAFEWORD = 510;  // new for safeword
 integer POPUP_HELP = 1001;
+integer LM_SETTING_SAVE = 2000;//scripts send messages on this channel to have settings saved to settings store
 integer MENUNAME_REQUEST = 3000;
 integer MENUNAME_RESPONSE = 3001;
 string g_sSafeWord = "RED";
@@ -171,8 +172,6 @@ default
         }
          else if (sChan == COLLAR_CHANNEL)//from our Collar
         {
-            if (SYNC) //only do if collar sync is on (this needs writing)
-            {
                 string sMsg1 = "";
                 string sMsg2 = "";
                 string sMsg3 = "";
@@ -188,6 +187,7 @@ default
                 integer k = llGetListLength(lParams2);
                 sMsg2 = llList2String(lParams2, 0);
                 sMsg3 = llList2String(lParams2, 1);
+                
                 if ((sMsg2 == "auth_owner") || (sMsg2 == "auth_secowners") || (sMsg2 == "auth_blacklist"))
                 {//if any of these we need to reformat it and send it to auth.
                     integer start = 0;
@@ -200,6 +200,7 @@ default
                     }
                     send_sMsg1 = sMsg2 + "=" + send_sMsg;
                  llMessageLinked(LINK_SET, COMMAND_NOAUTH, send_sMsg1, llGetOwnerKey(kID));//send to auth
+                 llMessageLinked(LINK_SET, LM_SETTING_SAVE, send_sMsg1, llGetOwnerKey(kID));//send to settings
                 }
                 else if ((sMsg2 =="setgroup") || (sMsg2 =="unsetgroup") || (sMsg2 =="setopenaccess") || (sMsg2 =="unsetopenaccess"))
                 { //if any of these just pass to NOAUTH to check who is sending it
@@ -218,10 +219,16 @@ default
                     llMessageLinked(LINK_SET, COMMAND_NOAUTH,sMsg1, llGetOwnerKey(kTouch1));
                     if (sMsg1 == "rlvoff")  llOwnerSay("RLV in your cuffs has been turned off from your Collar.");
                 }
-                else if ((sMsg1 =="show") || (sMsg1 =="hide"))// lets send apperance show/hide
+                else if ((sMsg1 =="cshow") || (sMsg1 =="chide"))// lets send apperance show/hide
                 {
                     llMessageLinked(LINK_SET, COMMAND_NOAUTH,sMsg1, llGetOwnerKey(kID));
-                } 
+                }
+                else if ((sMsg2 =="lock") || (sMsg2 =="unlock"))// lets send lock
+                {
+                    llMessageLinked(LINK_SET, COMMAND_NOAUTH,sMsg2, llGetOwnerKey(kID));
+                }
+                
+                 
                 list lParams3 = llParseString2List(sMsg1, ["_"], []);
                 sMsg2 = llList2String(lParams3, 0);
                 if ((sMsg2 == "color") || (sMsg2 == "texture"))
@@ -238,7 +245,6 @@ default
                 {
 
                 }
-            }
         }
         else if (sChan == g_iInterfaceChannel)
         {

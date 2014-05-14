@@ -1,5 +1,6 @@
-# OpenNC 8Cuffs legs 3.960
-Chain Only|*none*|rllc=lllc
+# OpenNC 8Cuffs legs 3.961
+#Chain Only|*none*|rllc=lllc
+Chainonly|chainonly|rllc=lllc
 Belly|cuff-belly|irllc=illlc~rulc=lulc
 Butterfly|cuff-butterfly|rllc=lllc~lllc=lulc~rllc=rulc~ilulc=locbelt~irulc=rocbelt
 # Hang|cuff-hang|rllc=lllc~orulc=illlc~olulc=irllc~rulc=lulc

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////////
 // ------------------------------------------------------------------------------ //
 //                            OpenNC - texture cuff                               //
-//                            version 3.960                                       //
+//                            version 3.961                                       //
 // ------------------------------------------------------------------------------ //
 // Licensed under the GPLv2 with additional requirements specific to Second Life® //
 // and other virtual metaverse environments.                                      //
@@ -477,6 +477,11 @@ default
                         SetElementTexture(s_CurrentElement, sTex);
                         //-------------extra cuffs-------------
                         //send to other cuffs
+                        if(llGetInventoryType(sTex) == INVENTORY_TEXTURE)
+                        {    //Texture exist in Prim?  Error evasion.  It may be surplus.
+                            key k = llGetInventoryKey(sTex);
+                            if(k != NULL_KEY) sTex = (string)k; //Full permission is not NULL_KEY.  If it is not Full permission, then put texture in each Slave-cuffs.
+                        }
                         SendCmd("*",g_szTextureChangeCmd+"="+s_CurrentElement+"="+sTex,"");
                         //---------end extra cuffs-------------
                         TextureMenu(kAv, iPage, iAuth);
