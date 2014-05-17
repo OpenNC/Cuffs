@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////////
 // ------------------------------------------------------------------------------ //
 //                            OpenNC - menu cuff                                  //
-//                            version 3.960                                       //
+//                            version 3.961                                       //
 // ------------------------------------------------------------------------------ //
 // Licensed under the GPLv2 with additional requirements specific to Second Life® //
 // and other virtual metaverse environments.                                      //
@@ -23,8 +23,7 @@ list g_lMenuNames = ["Main", "Help/Debug"];
 
 list g_lMenus;//exists in parallel to g_lMenuNames, each entry containing a pipe-delimited string with the items for the corresponding menu
 list g_lMenuPrompts = [
-//WS: let's query for version properly; the static number is supposed to be a reminder not a solution
-"\n\nWelcome to the Main Menu\nOpenNC Version 3.960",
+"\n\nWelcome to the Main Menu\nOpenNC Version 3.961",
 "\n\nPlease think about joining the support group, search for OpenNC in group search",
 "\n\nThis menu grants access to every installed AddOn.\n"
 ];
@@ -50,6 +49,104 @@ string REFRESH_MENU = "Fix Menus";
 string USER_GROUP = "OpenNC Grp";
 string USER_GROUP_ID = "a6e8c5c4-b1e3-0ceb-175d-a0eb6685a807";
 string WIKI = "ℹ";
+key wearer;
+
+//size adust
+float MIN_DIMENSION=0.001; // the minimum scale of a prim allowed, in any dimension
+float MAX_DIMENSION=1.0; // the maximum scale of a prim allowed, in any dimension
+float max_scale;
+float min_scale;
+float   cur_scale = 1.0;
+integer handle;
+integer menuChan;
+float min_original_scale=10.0; // minimum x/y/z component of the scales in the linkset
+float max_original_scale=0.0; // minimum x/y/z component of the scales in the linkset
+list link_scales = [];
+list link_positions = [];
+ 
+makeMenu()
+{
+    llDialog(llGetOwner(),"Max scale: "+(string)max_scale+"\nMin scale: "+(string)min_scale+"\n \nCurrent scale: "+
+        (string)cur_scale,["-0.01","-0.05","MIN  SIZE","+0.01","+0.05","MAX  SIZE","-0.10","-0.25","RESTORE","+0.10","+0.25"],menuChan);
+}
+ 
+integer scanLinkset()
+{
+    integer link_qty = llGetNumberOfPrims();
+    integer link_idx;
+    vector link_pos;
+    vector link_scale;
+    //script made specifically for linksets, not for single prims
+    if (link_qty > 1)
+    {
+        //link numbering in linksets starts with 1
+        for (link_idx=1; link_idx <= link_qty; link_idx++)
+        {
+            link_pos=llList2Vector(llGetLinkPrimitiveParams(link_idx,[PRIM_POSITION]),0);
+            link_scale=llList2Vector(llGetLinkPrimitiveParams(link_idx,[PRIM_SIZE]),0);
+            // determine the minimum and maximum prim scales in the linkset,
+            // so that rescaling doesn't fail due to prim scale limitations
+            if(link_scale.x<min_original_scale) min_original_scale=link_scale.x;
+            else if(link_scale.x>max_original_scale) max_original_scale=link_scale.x;
+            if(link_scale.y<min_original_scale) min_original_scale=link_scale.y;
+            else if(link_scale.y>max_original_scale) max_original_scale=link_scale.y;
+            if(link_scale.z<min_original_scale) min_original_scale=link_scale.z;
+            else if(link_scale.z>max_original_scale) max_original_scale=link_scale.z;
+            link_scales    += [link_scale];
+            link_positions += [(link_pos-llGetRootPosition())/llGetRootRotation()];
+        }
+    }
+    else
+    {
+        llOwnerSay("error: this script doesn't work for non-linked objects");
+        return FALSE;
+    }
+    max_scale = MAX_DIMENSION/max_original_scale;
+    min_scale = MIN_DIMENSION/min_original_scale;
+    return TRUE;
+}
+ 
+resizeObject(float scale)
+{
+    integer link_qty = llGetNumberOfPrims();
+    integer link_idx;
+    vector new_size;
+    vector new_pos;
+    if (link_qty > 1)
+    {
+        //link numbering in linksets starts with 1
+        for (link_idx=1; link_idx <= link_qty; link_idx++)
+        {
+            new_size   = scale * llList2Vector(link_scales, link_idx-1);
+            new_pos    = scale * llList2Vector(link_positions, link_idx-1);
+ 
+            if (link_idx == 1)
+            {
+                //because we don't really want to move the root prim as it moves the whole object
+                llSetLinkPrimitiveParamsFast(link_idx, [PRIM_SIZE, new_size]);
+            }
+            else
+            {
+                llSetLinkPrimitiveParamsFast(link_idx, [PRIM_SIZE, new_size, PRIM_POSITION, new_pos]);
+            }
+        }
+    }
+}
+//end of size adjust
+
+integer getPersonalChannel(key owner, integer nOffset)
+{
+    integer chan = (integer)("0x"+llGetSubString((string)owner,2,7)) + nOffset;
+    if (chan>0)
+    {
+        chan=chan*(-1);
+    }
+    if (chan > -10000)
+    {
+        chan -= 30000;
+    }
+    return chan;
+}
 
 key Dialog(key kRCPT, string sPrompt, list lChoices, list lUtilityButtons, integer iPage, integer iAuth)
 {
@@ -71,6 +168,7 @@ Menu(string sName, key kID, integer iAuth)
         {
             lUtility = [UPMENU];
         }
+        else lUtility = ["Collar Menu"];
         key kMenuID = Dialog(kID, sPrompt, lItems, lUtility, 0, iAuth);
         integer iIndex = llListFindList(g_lMenuIDs, [kID]);
         if (~iIndex)
@@ -91,6 +189,7 @@ integer KeyIsAv(key kID)
 
 MenuInit()
 {
+    wearer = llGetOwner();
     g_lMenus = ["","",""];
     integer n;
     integer iStop = llGetListLength(g_lMenuNames);
@@ -108,7 +207,11 @@ MenuInit()
     HandleMenuResponse("Help/Debug|" + REFRESH_MENU);      
     HandleMenuResponse("Help/Debug|" + USER_GROUP);
     HandleMenuResponse("Help/Debug|" + helpcard);
-    llMessageLinked(LINK_SET, MENUNAME_REQUEST, "Main", ""); 
+    llMessageLinked(LINK_SET, MENUNAME_REQUEST, "Main", "");
+    //resize
+    llListenRemove(handle);
+    menuChan = 50000 + (integer)llFrand(50000.00);
+    handle = llListen(menuChan,"",llGetOwner(),""); 
 }
 
 HandleMenuResponse(string entry)
@@ -184,11 +287,18 @@ default
         llSleep(1.0);//delay sending this message until we're fairly sure that other scripts have reset too, just in case
         g_iScriptCount = llGetInventoryNumber(INVENTORY_SCRIPT);
         MenuInit();
+        if (scanLinkset()) { // llOwnerSay("resizer script ready");
+        }
+        
     }
     //-------extra cuff---------------
     touch_start(integer num)//so we can touch the cuff
     {
-        llMessageLinked(LINK_THIS, COMMAND_NOAUTH, "cmenu", llDetectedKey(0));
+        if (llDetectedKey(0) == llGetOwner())// if we are wearer then allow to resize
+        {
+            llDialog(llGetOwner(),"Select if you want to Resize this item or the main Cuff Menu ",["Resizer","Cuff Menu"],menuChan);
+        }
+        else { llMessageLinked(LINK_THIS, COMMAND_NOAUTH, "cmenu", llDetectedKey(0));}//else just give cuff menu
     }
     //-------end extra cuff---------------
     
@@ -219,27 +329,31 @@ default
                 //we have to subtract from the index because the dialog id comes in the middle of the stride
                 g_lMenuIDs = llDeleteSubList(g_lMenuIDs, iMenuIndex - 1, iMenuIndex - 2 + g_iMenuStride);
 
-                    if (sMessage == USER_GROUP)
-                    {
-                        llInstantMessage(kAv,"\n\nJoin secondlife:///app/group/" + USER_GROUP_ID + "/about " + "for friendly support.\n");
-                        Menu("Help/Debug", kAv, iAuth);
-                    }
-                    else if (sMessage == REFRESH_MENU)
-                    {//send a command telling other plugins to rebuild their menus
-                        UserCommand(iAuth, "refreshmenu1", kAv);
-                    }
-                    else if (sMessage == helpcard)
-                    {//give out the help card
-                        llGiveInventory(kAv, HELPCARD);
-                    }
-                    else if (sMessage == UPMENU)
-                    {
-                        Menu("Main", kAv, iAuth);
-                    }
-                    else
-                    {
-                        llMessageLinked(LINK_SET, iAuth, "menu "+sMessage, kAv);
-                    }
+                if (sMessage == USER_GROUP)
+                {
+                    llInstantMessage(kAv,"\n\nJoin secondlife:///app/group/" + USER_GROUP_ID + "/about " + "for friendly support.\n");
+                    Menu("Help/Debug", kAv, iAuth);
+                }
+                else if (sMessage == REFRESH_MENU)
+                {//send a command telling other plugins to rebuild their menus
+                    UserCommand(iAuth, "refreshmenu1", kAv);
+                }
+                else if (sMessage == helpcard)
+                {//give out the help card
+                    llGiveInventory(kAv, HELPCARD);
+                }
+                else if (sMessage == UPMENU)
+                {
+                    Menu("Main", kAv, iAuth);
+                }
+                else if (sMessage == "Collar Menu")
+                {
+                    llRegionSayTo(wearer,getPersonalChannel(wearer,1111), (string)wearer + ":menu");
+                }
+                else
+                {
+                    llMessageLinked(LINK_SET, iAuth, "menu "+sMessage, kAv);
+                }
             }
         }
         else if (iNum == DIALOG_TIMEOUT)
@@ -263,6 +377,50 @@ default
             if (llGetInventoryNumber(INVENTORY_SCRIPT) != g_iScriptCount)
             {//a script has been added or removed.  Reset to rebuild menu
                 llResetScript();
+            }
+        }
+    }
+    listen(integer nChannel, string szName, key keyID, string szMsg)
+    {
+        if (keyID == llGetOwner())
+        {
+            if (szMsg == "Cuff Menu")
+            {
+                llMessageLinked(LINK_THIS, COMMAND_NOAUTH, "cmenu", keyID);
+            }
+            else if (szMsg == "Resizer")
+            {
+                makeMenu();
+            }
+            else
+            {
+                if (szMsg == "RESTORE")
+                {
+                    cur_scale = 1.0;
+                }
+                else if (szMsg == "MIN SIZE")
+                {
+                    cur_scale = min_scale;
+                }
+                else if (szMsg == "MAX SIZE")
+                {
+                    cur_scale = max_scale;
+                }          
+                else
+                {
+                    cur_scale += (float)szMsg;
+                }
+                //check that the scale doesn't go beyond the bounds
+                if (cur_scale > max_scale)
+                { 
+                    cur_scale = max_scale;
+                }
+                if (cur_scale < min_scale)
+                {
+                    cur_scale = min_scale;
+                }
+                resizeObject(cur_scale);
+                makeMenu();
             }
         }
     }
