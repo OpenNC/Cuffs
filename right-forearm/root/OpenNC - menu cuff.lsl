@@ -49,6 +49,7 @@ string REFRESH_MENU = "Fix Menus";
 string USER_GROUP = "OpenNC Grp";
 string USER_GROUP_ID = "a6e8c5c4-b1e3-0ceb-175d-a0eb6685a807";
 string WIKI = "ℹ";
+string UPDATE = "Update";
 key wearer;
 
 //size adust
@@ -207,6 +208,7 @@ MenuInit()
     HandleMenuResponse("Help/Debug|" + REFRESH_MENU);      
     HandleMenuResponse("Help/Debug|" + USER_GROUP);
     HandleMenuResponse("Help/Debug|" + helpcard);
+    HandleMenuResponse("Help/Debug|" + UPDATE);
     llMessageLinked(LINK_SET, MENUNAME_REQUEST, "Main", "");
     //resize
     llListenRemove(handle);
@@ -341,6 +343,10 @@ default
                 else if (sMessage == helpcard)
                 {//give out the help card
                     llGiveInventory(kAv, HELPCARD);
+                }
+                else if (sMessage == UPDATE)
+                {//call the updater
+                    llMessageLinked(LINK_SET, iAuth, "UPDATE", kAv);
                 }
                 else if (sMessage == UPMENU)
                 {

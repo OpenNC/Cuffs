@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////////
 // ------------------------------------------------------------------------------ //
 //                              OpenNC - _control                                 //
-//                                 version 3.960                                  //
+//                                 version 3.961                                  //
 // ------------------------------------------------------------------------------ //
 // Licensed under the GPLv2 with additional requirements specific to Second Life® //
 // and other virtual metaverse environments.                                      //
@@ -15,18 +15,22 @@
 
 //MESSAGE MAP
 integer COMMAND_NOAUTH = 0;
+integer LM_SETTING_SAVE = 2000;//scripts send messages on this channel to have settings saved to httpdb
+integer LM_SETTING_REQUEST = 2001;//when startup, scripts send requests for settings on this channel
+integer LM_SETTING_RESPONSE = 2002;//the httpdb script will send responses on this channel
+integer LM_SETTING_DELETE = 2003;//delete token from DB
 integer RLV_CMD = 6000; //RLV command channel
 integer RLV_REFRESH = 6001; //RLV plugins should reinstate their restrictions upon receiving this message.
-integer    LM_CUFF_CMD        = -551001; // cuff command channel
-integer    LM_CUFF_ANIM    = -551002; // cuff animation channel
+integer LM_CUFF_CMD = -551001; // cuff command channel
+integer LM_CUFF_ANIM = -551002; // cuff animation channel
 integer LM_CUFF_CHAINTEXTURE = -551003; // used as channel for linked messages - sending the choosen texture to the cuff
-integer g_nCmdChannel    = -190890; // command channel
-integer g_nCuffChannel    = -190889; // cuff channel used for LG chains from the cuffs
+integer g_nCmdChannel = -190890; // command channel
+integer g_nCuffChannel = -190889; // cuff channel used for LG chains from the cuffs
 integer g_nLockGuardChannel = -9119;
-integer    g_nCmdHandle    = 0;  // command listen handler
-integer    g_nCuffHandle    = 0; // cuff command listen handler
+integer g_nCmdHandle = 0;  // command listen handler
+integer g_nCuffHandle = 0; // cuff command listen handler
 integer g_nCmdChannelOffset = 0xCC0CC;  // offset to be used to make sure we do not interfere with other items using the same technique for
-key        g_keyWearer        = ""; // key of the owner/wearer
+key g_keyWearer = ""; // key of the owner/wearer
 integer g_nStdChannel    = 0; // standard chat channel
 integer g_nStdHandle; // standard listen handler
 //===================
@@ -111,6 +115,9 @@ string  g_szAO_OFF = "ZHAO_PAUSE";
 integer g_nStay = FALSE;
 integer g_nStayMode = FALSE;
 integer g_nSlowMode = FALSE;
+integer msgsent1 = FALSE; //to stop double messages
+integer msgsent2 = FALSE; //to stop double messages
+
 // variable for staying in place
 integer g_nRLVArms = FALSE;
 integer g_nRLVLegs = FALSE;
@@ -122,6 +129,10 @@ string  g_szWearerName;
 vector g_vBase_impulse = <0.5,0,0>;
 integer g_nDuration = 5;
 integer g_nStart_time;
+string rlvarms; //store of current rlv settings
+string rlvlegs; //      "
+string rlvwings; //     "
+string rlvtail; //      "
 //===============================================================================
 //= parameters   :  integer nOffset        Offset to make sure we use really a unique channel
 //=
@@ -319,7 +330,7 @@ Override()
 {
     if ( ! g_nInOverride )
     {
-//        GetPermissions();//ng
+        // 1 section for each of arms, legs, wings and tail
         g_nInOverride = TRUE;
 
         if ( g_nOverride && g_szActAAnim != "" )
@@ -369,7 +380,7 @@ GetPermissions()
 //===============================================================================
 SendCmd( string szSendTo, string szCmd, key keyID )
 {
-    llRegionSay(g_nCmdChannel + 1, g_szModToken + "|" + szSendTo + "|" + szCmd + "|" + (string)keyID);
+    llRegionSayTo(g_keyWearer,g_nCmdChannel + 1, g_szModToken + "|" + szSendTo + "|" + szCmd + "|" + (string)keyID);
 }
 //===============================================================================
 //= parameters   :    key        keyID    key of the calling AV or object
@@ -435,8 +446,8 @@ ParseSingleCmd( key keyID, string szMsg )
 //===============================================================================
 DisableAOs()
 { 
-    llSay(-8888,((string)llGetOwner())+"bootoff");// send LM command for disabling AOs
-    llSay(g_nAOChannel, g_szAO_OFF);//switch off OpenCollar Sub AO
+    llRegionSayTo(g_keyWearer,-8888,((string)llGetOwner())+"bootoff");// send LM command for disabling AOs
+    llRegionSayTo(g_keyWearer,g_nAOChannel, g_szAO_OFF);//switch off OpenCollar Sub AO
 }
 //===============================================================================
 //= parameters   :    none
@@ -448,24 +459,36 @@ DisableAOs()
 //===============================================================================
 EnableAOs()
 {
-    llSay(-8888,((string)llGetOwner())+"booton");// send LM command for enabling AOs
-    llSay(g_nAOChannel, g_szAO_ON);//switch on OpenCollar Sub AO
+    llRegionSayTo(g_keyWearer,-8888,((string)llGetOwner())+"booton");// send LM command for enabling AOs
+    llRegionSayTo(g_keyWearer,g_nAOChannel, g_szAO_ON);//switch on OpenCollar Sub AO
 }
 
 StayPut()
 {
-    if (g_nStay) return;
-    g_nStay = TRUE;
-    llRequestPermissions(g_keyWearer, PERMISSION_TAKE_CONTROLS);
-    llOwnerSay("You are bound, so your movement is restricted.");
-}
+    if ((g_nLegAnimRunning)&&(g_nStay || g_nSlowMode))
+    {
+        llRequestPermissions(g_keyWearer, PERMISSION_TAKE_CONTROLS);
+        
+        if (!msgsent1)
+        {
+            llOwnerSay("You are bound, so your movement is restricted.");
+            msgsent1= TRUE;//stops double messages
+            msgsent2=FALSE;
+        }
+        
+    }
+    else if (!g_nLegAnimRunning)
+    {
+        llReleaseControls();
+        
+        if (!msgsent2)
+        {
+            llOwnerSay("You are free to move again.");
+            msgsent1=FALSE;//stops double messages
+            msgsent2=TRUE;
+        }
+    }
 
-UnStay()
-{
-    if (!g_nStay) return;
-    g_nStay = FALSE;
-    llReleaseControls();
-    llOwnerSay("You are free to move again.");
 }
 
 RLVRestrictions(integer ShowMessages)
@@ -478,18 +501,18 @@ RLVRestrictions(integer ShowMessages)
             {
                 if (ShowMessages) llOwnerSay("Your arms are bound, so you can do only limited things.");
                 g_nRLVArms=TRUE;
-                llMessageLinked(LINK_THIS, RLV_CMD, "edit=n,rez=n,showinv=n,fartouch=n", "");
+                rlvarms = "edit=n,rez=n,showinv=n,fartouch=n";
+                llMessageLinked(LINK_THIS, RLV_CMD, rlvarms, "");
             }
-
         }
         else
         {
             if (g_nRLVArms)
             {
                 if (ShowMessages) llOwnerSay("Your arms are free to touch things again.");
-
                 g_nRLVArms=FALSE;
-                llMessageLinked(LINK_THIS, RLV_CMD, "edit=y,rez=y,showinv=y,fartouch=y", "");
+                rlvarms = "edit=y,rez=y,showinv=y,fartouch=y";
+                llMessageLinked(LINK_THIS, RLV_CMD, rlvarms, "");
             }
         }
         if(g_nLegAnimRunning)
@@ -497,20 +520,19 @@ RLVRestrictions(integer ShowMessages)
             if (!g_nRLVLegs)
             {
                 if (ShowMessages) llOwnerSay("Your legs are bound, so you can only limited move.");
-
                 g_nRLVLegs=TRUE;
-                llMessageLinked(LINK_THIS, RLV_CMD, "sittp=n,tplm=n,tploc=n,tplure=n", "");
+                rlvlegs = "sittp=n,tplm=n,tploc=n,tplure=n";
+                llMessageLinked(LINK_THIS, RLV_CMD, rlvlegs, "");
             }
-
         }
         else
         {
             if (g_nRLVLegs)
             {
                 if (ShowMessages) llOwnerSay("Your legs are free to you can move normal again.");
-
                 g_nRLVLegs=FALSE;
-                llMessageLinked(LINK_THIS, RLV_CMD, "sittp=y,tplm=y,tploc=y,tplure=y", "");
+                rlvlegs = "sittp=y,tplm=y,tploc=y,tplure=y";
+                llMessageLinked(LINK_THIS, RLV_CMD, rlvlegs, "");
             }
         }
         if(g_nWingAnimRunning)
@@ -518,9 +540,9 @@ RLVRestrictions(integer ShowMessages)
             if (!g_nRLVWings)
             {
                 if (ShowMessages) llOwnerSay("Your Wings are bound, so you can only limited move.");
-
                 g_nRLVWings=TRUE;
-                llMessageLinked(LINK_THIS, RLV_CMD, "fly=n", "");
+                rlvwings = "fly=n";
+                llMessageLinked(LINK_THIS, RLV_CMD, rlvwings, "");
             }
 
         }
@@ -529,9 +551,9 @@ RLVRestrictions(integer ShowMessages)
             if (g_nRLVWings)
             {
                 if (ShowMessages) llOwnerSay("Your Wings are free, you can move normal again.");
-
                 g_nRLVWings=FALSE;
-                llMessageLinked(LINK_THIS, RLV_CMD, "fly=y", "");
+                rlvwings = "fly=y";
+                llMessageLinked(LINK_THIS, RLV_CMD, rlvwings, "");
             }
         }
         if(g_nTailAnimRunning)
@@ -540,7 +562,8 @@ RLVRestrictions(integer ShowMessages)
             {
 //                if (ShowMessages) llOwnerSay("Your Tail is bound, so you can only limited move.");
                 g_nRLVTail=TRUE;
-//                llMessageLinked(LINK_THIS, RLV_CMD, "fly=n", "");
+                rlvtail = "";
+//                llMessageLinked(LINK_THIS, RLV_CMD, rlvtail, "");
             }
 
         }
@@ -548,9 +571,10 @@ RLVRestrictions(integer ShowMessages)
         {
             if (g_nRLVTail)
             {
-//                if (ShowMessages) llOwnerSay("Your Wings are free, you can move normal again.");
+//                if (ShowMessages) llOwnerSay("Your tail is free, you can move normal again.");
                 g_nRLVTail=FALSE;
-//                llMessageLinked(LINK_THIS, RLV_CMD, "fly=y", "");
+                rlvtail = "";
+//                llMessageLinked(LINK_THIS, RLV_CMD, rlvtail, "");
             }
         }
     }
@@ -559,24 +583,28 @@ RLVRestrictions(integer ShowMessages)
         if (g_nRLVArms)
         {
             if (ShowMessages) llOwnerSay("Your are free to touch things again.");
-            llMessageLinked(LINK_THIS, RLV_CMD, "edit=y,rez=y,showinv=y,fartouch=y", "");
+            rlvarms = "edit=y,rez=y,showinv=y,fartouch=y";
+            llMessageLinked(LINK_THIS, RLV_CMD, rlvarms, "");
             g_nRLVArms=FALSE;
         }
         if (g_nRLVLegs)
         {
-            llMessageLinked(LINK_THIS, RLV_CMD, "sittp=y,tplm=y,tploc=y,tplure=y", "");
+            rlvlegs = "sittp=y,tplm=y,tploc=y,tplure=y";
+            llMessageLinked(LINK_THIS, RLV_CMD, rlvlegs, "");
             g_nRLVLegs=FALSE;
             if (ShowMessages) llOwnerSay("Your legs are free to you can move normal again.");
         }
         if (g_nRLVWings)
         {
-            llMessageLinked(LINK_THIS, RLV_CMD, "fly=y", "");
+            rlvwings = "fly=y";
+            llMessageLinked(LINK_THIS, RLV_CMD, rlvwings, "");
             g_nRLVWings=FALSE;
             if (ShowMessages) llOwnerSay("Your Wings are free, you can move normal again.");
         }
         if (g_nRLVTail)
         {
-//            llMessageLinked(LINK_THIS, RLV_CMD, "fly=y", "");
+            rlvtail = "";
+//            llMessageLinked(LINK_THIS, RLV_CMD, rlvtail, "");
             g_nRLVTail=FALSE;
 //            if (ShowMessages) llOwnerSay("Your Tail is free, you can move normal again.");
         }
@@ -604,7 +632,7 @@ default
     {  // Is the user holding down left or right?
         if ( nHeld & (CONTROL_ROT_LEFT|CONTROL_ROT_RIGHT|CONTROL_FWD|CONTROL_BACK) )
         {
-            Override();
+            Override();//stops all movement
         }
          if (g_nSlowMode)
         {
@@ -614,11 +642,11 @@ default
             vector impulse = wear_off * g_vBase_impulse;
             if (nHeld & CONTROL_FWD)
             {
-                llApplyImpulse(impulse , TRUE);
+                llApplyImpulse(impulse , TRUE);//slows down forward movement
             }
             else if (nHeld & CONTROL_BACK)
             {
-                llApplyImpulse(-impulse , TRUE);
+                llApplyImpulse(-impulse , TRUE);//slow down backwards movement
             }
         }
     }
@@ -654,31 +682,23 @@ default
             }
              else if (szMsg == "staymode=on")
             {
-                g_nStayMode = TRUE;
-                g_nSlowMode = FALSE;
-                if (g_nLegAnimRunning)
-                {
-                    StayPut();
-                }
+                g_nStayMode = TRUE;//go into stay mode
+                g_nSlowMode = FALSE;//not in slow mode
+                StayPut();
             }
             else if (szMsg == "staymode=slow")
             {
-                g_nStayMode = FALSE;
-                g_nSlowMode = TRUE;
-                if (g_nLegAnimRunning)
-                {
-                    StayPut();
-                }
+                g_nStayMode = FALSE;//not in stay mode
+                g_nSlowMode = TRUE;//go into slow mode
+                StayPut();
             }
             else if (szMsg == "staymode=off")
             {
-                g_nStayMode = FALSE;
-                if (g_nStay)
-                {
-                    UnStay();
-                }
+                g_nStayMode = FALSE;//not in Stay mode
+                g_nSlowMode = FALSE;//not in slow mode
+                StayPut();
             }
-            else if (szMsg == "rlvmode=on")
+            if (szMsg == "rlvmode=on")
             {
                 g_nRLVMode = TRUE;
                 RLVRestrictions(TRUE);
@@ -687,6 +707,7 @@ default
             {
                 g_nRLVMode = FALSE;
                 RLVRestrictions(TRUE);
+                StayPut();
             }
             else
             {
@@ -717,10 +738,12 @@ default
                 if (szAnim==g_szStopCommand) // Stop received
                 {
                     g_nLegAnimRunning=FALSE;
+                    StayPut();
                 }
                 else // Normal anim received
                 {
                     g_nLegAnimRunning=TRUE;
+                    StayPut();
                 }
             }
             if (szTarget=="w") // Command for the Wings
@@ -768,7 +791,7 @@ default
             }
             else
             {
-                UnStay();
+                StayPut();
             }
             RLVRestrictions(TRUE);
         }
@@ -869,6 +892,9 @@ default
     
     on_rez(integer rez_state) 
     {
-        llResetScript(); //left in so it clears listens on rez
+        if (g_keyWearer!=llGetOwner())
+        {
+            llResetScript(); //left in so it clears on new owner
+        }
     }
 }

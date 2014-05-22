@@ -68,7 +68,7 @@ integer GetOwnerChannel(key kOwner, integer iOffset)
 SetListeners()
 {
     INTERFACE_CHANNEL = GetOwnerChannel(g_kWearer, 1111);
-    COLLAR_CHANNEL = INTERFACE_CHANNEL++;
+    COLLAR_CHANNEL = ++INTERFACE_CHANNEL;
     llListenRemove(INTERFACE_CHANNEL);
     llListenRemove(COLLAR_CHANNEL);
     llListenRemove(g_iListener1);
@@ -305,7 +305,7 @@ default
             }
             else if (sStr == "ping")
             {// ping from an object, we answer to it on the object channel
-                llSay(GetOwnerChannel(kID,1111),(string)g_kWearer+":pong");
+                llRegionSayTo(g_kWearer,GetOwnerChannel(kID,1111),(string)g_kWearer+":pong");
             }
             else if (iNum == COMMAND_OWNER)//handle changing prefix and channel from owner
             {
@@ -368,6 +368,14 @@ default
                 { //safeword used with prefix
                     llMessageLinked(LINK_SET, COMMAND_SAFEWORD, "", "");
                     llOwnerSay("You used your safeword, your owner will be notified you did.");
+                }
+                else
+                {
+                    list lParam = llParseString2List(sStr, ["|"], []);
+                    integer h = llGetListLength(lParam);
+                    string str1= llList2String(lParam, 0);
+                    key kAv = (key)llList2String(lParam, 1);
+                    llMessageLinked (LINK_SET, COMMAND_NOAUTH, str1, kAv);
                 }
             }
         }
