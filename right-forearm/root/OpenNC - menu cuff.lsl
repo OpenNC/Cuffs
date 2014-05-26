@@ -18,13 +18,13 @@
 //on listen, send submenu link message
 
 //-------cuff change---------------
-list g_lMenuNames = ["Main", "Help/Debug"];
+list g_lMenuNames = ["Main", "Help/About"];
 //---end cuff change---------------
 
 list g_lMenus;//exists in parallel to g_lMenuNames, each entry containing a pipe-delimited string with the items for the corresponding menu
 list g_lMenuPrompts = [
 "\n\nWelcome to the Main Menu\nOpenNC Version 3.961",
-"\n\nPlease think about joining the support group, search for OpenNC in group search",
+"\n\nFrom here you can\nFix Menu's,\nGet a cuffs Help notecard,\nGet a link in local chat to join the support group.",
 "\n\nThis menu grants access to every installed AddOn.\n"
 ];
 
@@ -205,10 +205,9 @@ MenuInit()
         }
     }
     //give the help menu GIVECARD and REFRESH_MENU buttons    
-    HandleMenuResponse("Help/Debug|" + REFRESH_MENU);      
-    HandleMenuResponse("Help/Debug|" + USER_GROUP);
-    HandleMenuResponse("Help/Debug|" + helpcard);
-    HandleMenuResponse("Help/Debug|" + UPDATE);
+    HandleMenuResponse("Help/About|" + REFRESH_MENU);      
+    HandleMenuResponse("Help/About|" + USER_GROUP);
+    HandleMenuResponse("Help/About|" + helpcard);
     llMessageLinked(LINK_SET, MENUNAME_REQUEST, "Main", "");
     //resize
     llListenRemove(handle);
@@ -272,7 +271,7 @@ integer UserCommand(integer iNum, string sStr, key kID)
         Menu(sSubmenu, kID, iNum);
     }
     else if (sStr == "chelp") llGiveInventory(kID, HELPCARD);                
-    else if (sStr == "cdebug") Menu("Help/Debug", kID, iNum);
+    else if (sStr == "cabout") Menu("Help/About", kID, iNum);
     else if (sCmd == "refreshmenu1")
     {
         llDialog(kID, "\n\nRebuilding menu.\n\nThis may take several seconds.", [], -341321);
@@ -296,6 +295,13 @@ default
     //-------extra cuff---------------
     touch_start(integer num)//so we can touch the cuff
     {
+        key id = llDetectedKey(0);
+        if ((llGetAttached() == 0)&& (id==wearer)) // If not attached then wake up update script then do nothing
+        {
+            llSetScriptState("OpenNC - update",TRUE);
+            return;
+        }
+        
         if (llDetectedKey(0) == llGetOwner())// if we are wearer then allow to resize
         {
             llDialog(llGetOwner(),"Select if you want to Resize this item or the main Cuff Menu ",["Resizer","Cuff Menu"],menuChan);
@@ -334,7 +340,7 @@ default
                 if (sMessage == USER_GROUP)
                 {
                     llInstantMessage(kAv,"\n\nJoin secondlife:///app/group/" + USER_GROUP_ID + "/about " + "for friendly support.\n");
-                    Menu("Help/Debug", kAv, iAuth);
+                    Menu("Help/About", kAv, iAuth);
                 }
                 else if (sMessage == REFRESH_MENU)
                 {//send a command telling other plugins to rebuild their menus
@@ -344,17 +350,13 @@ default
                 {//give out the help card
                     llGiveInventory(kAv, HELPCARD);
                 }
-                else if (sMessage == UPDATE)
-                {//call the updater
-                    llMessageLinked(LINK_SET, iAuth, "UPDATE", kAv);
-                }
                 else if (sMessage == UPMENU)
                 {
                     Menu("Main", kAv, iAuth);
                 }
                 else if (sMessage == "Collar Menu")
                 {
-                    llRegionSayTo(wearer,getPersonalChannel(wearer,1111), (string)wearer + ":menu");
+                    llRegionSayTo(wearer,getPersonalChannel(wearer,1111), (string)wearer + ":menu|"+(string)kAv);
                 }
                 else
                 {
