@@ -68,7 +68,9 @@ integer GetOwnerChannel(key kOwner, integer iOffset)
 SetListeners()
 {
     INTERFACE_CHANNEL = GetOwnerChannel(g_kWearer, 1111);
-    COLLAR_CHANNEL = ++INTERFACE_CHANNEL;
+    COLLAR_CHANNEL = ++INTERFACE_CHANNEL;  // << same value. It may be a bug.
+    //COLLAR_CHANNEL = INTERFACE_CHANNEL + 1;  // Is this correct? fix?
+    //llOwnerSay("debug:"+(string)COLLAR_CHANNEL+":"+(string)INTERFACE_CHANNEL);
     llListenRemove(INTERFACE_CHANNEL);
     llListenRemove(COLLAR_CHANNEL);
     llListenRemove(g_iListener1);
@@ -349,7 +351,8 @@ default
                         Notify(kID, "Error: 'channel' must be given a number.", FALSE);
                     }
                 }
-            }
+            } // end of "else if (iNum == COMMAND_OWNER"
+
             if (kID == g_kWearer)
             {
                 if (sCommand == "safeword")
@@ -375,7 +378,8 @@ default
                     integer h = llGetListLength(lParam);
                     string str1= llList2String(lParam, 0);
                     key kAv = (key)llList2String(lParam, 1);
-                    llMessageLinked (LINK_SET, COMMAND_NOAUTH, str1, kAv);
+                    //llMessageLinked (LINK_SET, COMMAND_NOAUTH, str1, kAv);  // duplicate broken message loop.
+                    // COMMAND_OWNER > COMMAND_NOAUTH kAv is ""
                 }
             }
         }
@@ -409,3 +413,4 @@ default
         llResetScript();
     }
 }
+
