@@ -67,8 +67,8 @@ integer GetOwnerChannel(key kOwner, integer iOffset)
 
 SetListeners()
 {
-    INTERFACE_CHANNEL = GetOwnerChannel(g_kWearer, 1111);
-    COLLAR_CHANNEL = ++INTERFACE_CHANNEL;
+    INTERFACE_CHANNEL = GetOwnerChannel(g_kWearer, 1110); //Normal cuff channel = collar channel +1
+    COLLAR_CHANNEL = GetOwnerChannel(g_kWearer, 1111); //Normal collar channel
     llListenRemove(INTERFACE_CHANNEL);
     llListenRemove(COLLAR_CHANNEL);
     llListenRemove(g_iListener1);
