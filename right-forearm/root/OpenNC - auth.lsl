@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////////
 // ------------------------------------------------------------------------------ //
 //                            OpenNC - auth                                       //
-//                            version 3.960                                       //
+//                            version 3.961                                       //
 // ------------------------------------------------------------------------------ //
 // Licensed under the GPLv2 with additional requirements specific to Second Life® //
 // and other virtual metaverse environments.                                      //
@@ -296,7 +296,7 @@ integer Auth(string kObjID, integer attachment)
     {
         iNum = COMMAND_WEARER;
     }
-    else if (g_iOpenAccess)
+    else if ((g_iOpenAccess)&& ((key)kID != NULL_KEY))
     {
         if (in_range((key)kID))
             iNum = COMMAND_GROUP;
@@ -761,16 +761,19 @@ default
                 {
                     llOwnerSay ("Owner list has been updated.");
                     g_lOwners = llParseString2List(sValue, [","], []);
+                    SayOwners();
                 }
             if (sToken == "auth_secowners")
                 {
                     llOwnerSay ("SecOwner list has been updated.");
                     g_lSecOwners = llParseString2List(sValue, [","], []);
+                    SayOwners();
                 }            
             if (sToken == "auth_blacklist")
                 {
                     llOwnerSay ("Black list has been updated.");
                     g_lBlackList = llParseString2List(sValue, [","], []);
+                    SayOwners();
                 }
             integer iAuth = Auth((string)kID, FALSE);
             if ((iNum == COMMAND_OWNER || kID == g_kWearer) && (sStr=="reset"))

@@ -67,8 +67,8 @@ integer GetOwnerChannel(key kOwner, integer iOffset)
 
 SetListeners()
 {
-    INTERFACE_CHANNEL = GetOwnerChannel(g_kWearer, 1110); //Normal cuff channel = collar channel +1
-    COLLAR_CHANNEL = GetOwnerChannel(g_kWearer, 1111); //Normal collar channel
+    INTERFACE_CHANNEL = GetOwnerChannel(g_kWearer, 1111);
+    COLLAR_CHANNEL = ++INTERFACE_CHANNEL;
     llListenRemove(INTERFACE_CHANNEL);
     llListenRemove(COLLAR_CHANNEL);
     llListenRemove(g_iListener1);
@@ -350,7 +350,7 @@ default
                     }
                 }
             }
-            if (kID == g_kWearer)
+            else if (kID == g_kWearer)
             {
                 if (sCommand == "safeword")
                 {   // new for safeword
@@ -375,7 +375,7 @@ default
                     integer h = llGetListLength(lParam);
                     string str1= llList2String(lParam, 0);
                     key kAv = (key)llList2String(lParam, 1);
-                    llMessageLinked (LINK_SET, COMMAND_NOAUTH, str1, kAv);
+                    if(kAv != "") llMessageLinked (LINK_SET, COMMAND_NOAUTH, str1, kAv);
                 }
             }
         }
