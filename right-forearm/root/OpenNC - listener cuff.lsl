@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////////
 // ------------------------------------------------------------------------------ //
 //                            OpenNC - listener cuff                              //
-//                            version 3.961                                       //
+//                            version 3.968                                       //
 // ------------------------------------------------------------------------------ //
 // Licensed under the GPLv2 with additional requirements specific to Second Life® //
 // and other virtual metaverse environments.                                      //
@@ -17,7 +17,7 @@ integer g_iListenChan0 = TRUE;
 string g_sPrefix = ".";
 integer g_iListener1;
 integer g_iListener2;
-integer INTERFACE_CHANNEL;
+integer CUFF_CHANNEL;
 integer COLLAR_CHANNEL;
 integer SYNC = TRUE;
 //MESSAGE MAP
@@ -67,9 +67,9 @@ integer GetOwnerChannel(key kOwner, integer iOffset)
 
 SetListeners()
 {
-    INTERFACE_CHANNEL = GetOwnerChannel(g_kWearer, 1111);
-    COLLAR_CHANNEL = ++INTERFACE_CHANNEL;
-    llListenRemove(INTERFACE_CHANNEL);
+    CUFF_CHANNEL = GetOwnerChannel(g_kWearer, 1110); //Normal cuff channel = collar channel +1
+    COLLAR_CHANNEL = GetOwnerChannel(g_kWearer, 1111); //Normal collar channel
+    llListenRemove(CUFF_CHANNEL);
     llListenRemove(COLLAR_CHANNEL);
     llListenRemove(g_iListener1);
     llListenRemove(g_iListener2);
@@ -82,7 +82,7 @@ SetListeners()
     if (g_iInterfaceChannel > 0) g_iInterfaceChannel = -g_iInterfaceChannel;
     g_iListenHandleAtt = llListen(g_iInterfaceChannel, "", "", "");
     g_iListener2 = llListen(g_iListenChan, "", "", "");
-    llListen(INTERFACE_CHANNEL, "", "", "");//Listen to external Objects here
+    llListen(CUFF_CHANNEL, "", "", "");//Listen to external Objects here
     llListen(COLLAR_CHANNEL, "", "", "");//Listen to Our Collar here
 }
 
@@ -153,7 +153,7 @@ default
             llMessageLinked(LINK_SET, COMMAND_SAFEWORD, "", "");
             llOwnerSay("You used your safeword, your owner will be notified you did.");
         }
-        if (sChan == INTERFACE_CHANNEL)//from external objects
+        if (sChan == CUFF_CHANNEL)//send everything for checking
         {
             list lParams = llParseString2List(sMsg, [":"], []);
             integer i = llGetListLength(lParams);
@@ -169,82 +169,6 @@ default
             {
                 Notify(kID, "Syntax Error! Request must be <uuid>:<command>", FALSE);
             }
-        }
-         else if (sChan == COLLAR_CHANNEL)//from our Collar
-        {
-                string sMsg1 = "";
-                string sMsg2 = "";
-                string sMsg3 = "";
-                string sMsg4 = "";
-                string sMsg5 = "";
-                string send_sMsg = "";
-                string send_sMsg1 = "";
-                list lParams1 = llParseString2List(sMsg, [":"], []);
-                integer j = llGetListLength(lParams1);
-                key kTouch1 = llList2Key(lParams1, 0);
-                sMsg1 = llList2String(lParams1, 1);
-                list lParams2 = llParseString2List(sMsg1, ["="], []);
-                integer k = llGetListLength(lParams2);
-                sMsg2 = llList2String(lParams2, 0);
-                sMsg3 = llList2String(lParams2, 1);
-                
-                if ((sMsg2 == "auth_owner") || (sMsg2 == "auth_secowners") || (sMsg2 == "auth_blacklist"))
-                {//if any of these we need to reformat it and send it to auth.
-                    integer start = 0;
-                    list lParams3 = llParseString2List(sMsg3, [","], []);
-                    integer l = llGetListLength(lParams3);
-                    for (start = 0; start < l; start ++)
-                    {
-                        sMsg4 = llList2String(lParams3, start);
-                        send_sMsg = send_sMsg + "," + sMsg4 +",";
-                    }
-                    send_sMsg1 = sMsg2 + "=" + send_sMsg;
-                 llMessageLinked(LINK_SET, COMMAND_NOAUTH, send_sMsg1, llGetOwnerKey(kID));//send to auth
-                 llMessageLinked(LINK_SET, LM_SETTING_SAVE, send_sMsg1, llGetOwnerKey(kID));//send to settings
-                }
-                else if ((sMsg2 =="setgroup") || (sMsg2 =="unsetgroup") || (sMsg2 =="setopenaccess") || (sMsg2 =="unsetopenaccess"))
-                { //if any of these just pass to NOAUTH to check who is sending it
-                    llMessageLinked(LINK_SET, COMMAND_NOAUTH,sMsg2, llGetOwnerKey(kID));
-                }
-                else if (sMsg2 =="cmenu")
-                {
-                    llMessageLinked(LINK_SET, COMMAND_NOAUTH,sMsg2, llGetOwnerKey(kTouch1));
-                }
-                else if (sMsg2 =="runaway")
-                {
-                    llMessageLinked(LINK_SET, COMMAND_NOAUTH,sMsg2, llGetOwnerKey(kTouch1));
-                }
-                else if ((sMsg1 =="rlvon") || (sMsg1 =="rlvoff"))// lets send RLV on/off
-                {
-                    llMessageLinked(LINK_SET, COMMAND_NOAUTH,sMsg1, llGetOwnerKey(kTouch1));
-                    if (sMsg1 == "rlvoff")  llOwnerSay("RLV in your cuffs has been turned off from your Collar.");
-                }
-                else if ((sMsg1 =="cshow") || (sMsg1 =="chide"))// lets send apperance show/hide
-                {
-                    llMessageLinked(LINK_SET, COMMAND_NOAUTH,sMsg1, llGetOwnerKey(kID));
-                }
-                else if ((sMsg2 =="lock") || (sMsg2 =="unlock"))// lets send lock
-                {
-                    llMessageLinked(LINK_SET, COMMAND_NOAUTH,sMsg2, llGetOwnerKey(kID));
-                }
-                
-                 
-                list lParams3 = llParseString2List(sMsg1, ["_"], []);
-                sMsg2 = llList2String(lParams3, 0);
-                if ((sMsg2 == "color") || (sMsg2 == "texture"))
-                {
-                    llMessageLinked(LINK_SET, COMMAND_NOAUTH,sMsg1, llGetOwnerKey(kID));
-                }        
-                if (kTouch1)
-                {
-                    string out = llDumpList2String([sMsg], "|");
-                    llMessageLinked(LINK_SET, COMMAND_NOAUTH, out, llGetOwnerKey(kID));//send to auth
-                }
-
-                else//this should never happen
-                {
-
-                }
         }
         else if (sChan == g_iInterfaceChannel)
         {
@@ -350,7 +274,7 @@ default
                     }
                 }
             }
-            else if (kID == g_kWearer)
+            if (kID == g_kWearer)
             {
                 if (sCommand == "safeword")
                 {   // new for safeword

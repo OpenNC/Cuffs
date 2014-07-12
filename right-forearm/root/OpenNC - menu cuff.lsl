@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////////
 // ------------------------------------------------------------------------------ //
 //                            OpenNC - menu cuff                                  //
-//                            version 3.961                                       //
+//                            version 3.965                                       //
 // ------------------------------------------------------------------------------ //
 // Licensed under the GPLv2 with additional requirements specific to Second Life® //
 // and other virtual metaverse environments.                                      //
@@ -23,7 +23,7 @@ list g_lMenuNames = ["Main", "Help/About"];
 
 list g_lMenus;//exists in parallel to g_lMenuNames, each entry containing a pipe-delimited string with the items for the corresponding menu
 list g_lMenuPrompts = [
-"\n\nWelcome to the Main Menu\nOpenNC Version 3.961",
+"\n\nWelcome to the Main Menu\nOpenNC Version 3.968",
 "\n\nFrom here you can\nFix Menu's,\nGet a cuffs Help notecard,\nGet a link in local chat to join the support group.",
 "\n\nThis menu grants access to every installed AddOn.\n"
 ];

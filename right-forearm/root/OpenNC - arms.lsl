@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////////
 // ------------------------------------------------------------------------------ //
 //                            OpenNC - arms                                       //
-//                            version 3.960                                       //
+//                            version 3.968                                       //
 // ------------------------------------------------------------------------------ //
 // Licensed under the GPLv2 with additional requirements specific to Second Life® //
 // and other virtual metaverse environments.                                      //
@@ -16,6 +16,8 @@ string parentmenu = "Cuff Poses";
 string submenu = "Arm Cuffs";
 string dbtoken = "cuff-arms";
 string CLCMD = "carms";
+string defaultscard = "Arm Cuffs";
+string menupose;
 list buttons;
 integer lastrank = 10000; //in this integer, save the rank of the person who posed the av, according to message map.  10000 means unposed
 key g_keyDialogID;
@@ -24,6 +26,9 @@ key g_keyWearer;
 integer COMMAND_NOAUTH = 0;//do we still need this?
 integer COMMAND_OWNER = 500;
 integer COMMAND_WEARER = 503;
+integer LM_SETTING_SAVE = 2000;//scripts send messages on this channel to have settings saved to httpdb
+integer LM_SETTING_REQUEST = 2001;//when startup, scripts send requests for settings on this channel
+integer LM_SETTING_RESPONSE = 2002;//the httpdb script will send responses on this channel
 integer MENUNAME_REQUEST = 3000;
 integer MENUNAME_RESPONSE = 3001;
 integer SUBMENU = 3002;
@@ -48,6 +53,13 @@ integer pos_line;
 string pos_file;
 key pos_query;
 
+key Dialog(key rcpt, string prompt, list choices, list utilitybuttons, integer page)
+{
+    key id = llGenerateKey();
+    llMessageLinked(LINK_SET, DIALOG, (string)rcpt + "|" + prompt + "|" + (string)page + "|" + llDumpList2String(choices, "`") + "|" + llDumpList2String(utilitybuttons, "`"), id);
+    return id;
+}
+
 LoadLocks(string file)
 {
     pos_line = 0;
@@ -69,6 +81,7 @@ integer LoadLocksParse( key queryid, string data)
         g_lstLocks = ["*Stop*"] + g_lstLocks;
         g_lstAnims = [""] + g_lstAnims;
         g_lstChains = [""] + g_lstChains;
+        llMessageLinked(LINK_THIS, LM_SETTING_REQUEST, dbtoken, "");//lets make sure we get our pose back once notecard is read
         return -1;
     }
     pos_line ++;
@@ -79,21 +92,13 @@ integer LoadLocksParse( key queryid, string data)
         return 1;
     }
     list lock = llParseString2List( data, ["|"], [] );
-    if ( llGetListLength(lock) != 3 )
-    {
+    if ( llGetListLength(lock) != 3 ) {
         return 1;
     }
     g_lstLocks += (list)llList2String(lock,0);
     g_lstAnims += (list)llList2String(lock,1);
     g_lstChains += (list)llList2String(lock,2);
     return 1;
-}
-
-key Dialog(key rcpt, string prompt, list choices, list utilitybuttons, integer page)
-{
-    key id = llGenerateKey();
-    llMessageLinked(LINK_SET, DIALOG, (string)rcpt + "|" + prompt + "|" + (string)page + "|" + llDumpList2String(choices, "`") + "|" + llDumpList2String(utilitybuttons, "`"), id);
-    return id;
 }
 //===============================================================================
 //= parameters   :  integer nOffset        Offset to make sure we use really a unique channel
@@ -128,7 +133,7 @@ integer nGetOwnerChannel(integer nOffset)
 //===============================================================================
 SendCmd( string szSendTo, string szCmd, key keyID )
 {
-    llRegionSay(g_nCmdChannel + 1, llList2String(g_lstModTokens,0) + "|" + szSendTo + "|" + szCmd + "|" + (string)keyID);
+    llRegionSayTo(g_keyWearer,g_nCmdChannel + 1, llList2String(g_lstModTokens,0) + "|" + szSendTo + "|" + szCmd + "|" + (string)keyID);
 }
 //===============================================================================
 //= parameters   :    key        keyID    key of the calling AV or object
@@ -185,13 +190,9 @@ Chains(key keyID, string szChain, string szLink)
     }
 
     if ( llListFindList(g_lstModTokens,[szTo]) != -1 )
-    {
         llMessageLinked( LINK_SET, LM_CUFF_CMD, "chain=" + szChain + "=" + szCmd, llGetKey() );
-    }
     else
-    {
         SendCmd(szTo, "chain=" + szChain + "=" + szCmd, llGetKey());
-    }
 }
 
 CallAnim( string szMsg, key keyID )
@@ -199,7 +200,8 @@ CallAnim( string szMsg, key keyID )
     integer nIdx    = -1;
     string    szAnim    = "";
     string    szChain    = "";
-    if ( g_szActAnim != "")
+
+        if ( g_szActAnim != "")
         nIdx    = llListFindList(g_lstLocks, [g_szActAnim]);
     if ( nIdx != -1 )
     {
@@ -219,7 +221,7 @@ CallAnim( string szMsg, key keyID )
             g_szActAnim = szMsg;
             szAnim    = llList2String(g_lstAnims, nIdx);
             szChain    = llList2String(g_lstChains, nIdx);
-            llMessageLinked( LINK_SET, LM_CUFF_ANIM, "a:"+szAnim, keyID );
+            llMessageLinked( LINK_SET, LM_CUFF_ANIM, "a:"+szAnim, keyID );  
             DoChains(keyID, szChain, "link");
         }
     }
@@ -229,8 +231,10 @@ CallAnim( string szMsg, key keyID )
 //===============================================================================
 DoMenu(key id)
 {
-    string prompt = "Pick an option.";
+    string prompt = "\nArm poses can be called from the chat line in the following format \n<pre>a:<Button_Name> ie- ora:Armsup";
+    prompt += "\nCurrent pose is - " + menupose;
     list mybuttons = buttons + g_lstLocks;
+    prompt += "\n\nPick an option.";
     g_keyDialogID=Dialog(id, prompt, mybuttons, [UPMENU], 0);
 }
 
@@ -244,12 +248,16 @@ default
     state_entry()
     {
         g_nCmdChannel= nGetOwnerChannel(g_nCmdChannelOffset);
-
+        g_keyWearer=llGetOwner();
         llSleep(1.0);
         llMessageLinked(LINK_SET, MENUNAME_REQUEST, submenu, "");
         llMessageLinked(LINK_SET, MENUNAME_RESPONSE, parentmenu + "|" + submenu, "");
-        LoadLocks("Arm Cuffs");
-        g_keyWearer=llGetOwner();
+        if (llGetInventoryType(defaultscard) == INVENTORY_NOTECARD) //testing existance of notecard
+        {
+            LoadLocks(defaultscard);
+        }
+        else llOwnerSay (defaultscard + " notecard not found!");
+        
     }
     dataserver( key queryid, string data ) 
     {
@@ -258,7 +266,11 @@ default
     changed(integer change) {
         if ( change & CHANGED_INVENTORY ) 
         {
-            LoadLocks("Arm Cuffs");
+            if (llGetInventoryType(defaultscard) == INVENTORY_NOTECARD) //testing existance of notecard
+            {
+                LoadLocks(defaultscard);
+            }
+            else llOwnerSay (defaultscard + " notecard not found!");
         }
     }
 
@@ -291,6 +303,7 @@ default
                         lastrank=nNum;
                     }
                     CallAnim(llGetSubString(str, 2,-1), id);
+                    llMessageLinked(LINK_THIS, LM_SETTING_SAVE, dbtoken +"="+ llGetSubString(str, 2,-1), "");
                 }
             }
             else if (str == "refreshmenu")
@@ -316,6 +329,7 @@ default
                 llResetScript();
             }
         }
+        
         else if ( nNum == DIALOG_RESPONSE)
         {
             if (id==g_keyDialogID)
@@ -334,14 +348,28 @@ default
                     if (message=="*Stop*")
                     {
                         llMessageLinked(LINK_SET, COMMAND_NOAUTH, "a:Stop", AV);
+                        menupose = "none";
                     }
                     else
                     {
                         llMessageLinked(LINK_SET, COMMAND_NOAUTH, "a:"+message, AV);
+                        menupose = message;
                     }
                     DoMenu(AV);
                 }
             }
+        }
+        else if (nNum == LM_SETTING_RESPONSE)
+        {
+            list menuparams = llParseString2List(str, ["="], []);
+            string token = llList2String(menuparams, 0);
+            string pose = llList2String(menuparams, 1);
+            if(token == dbtoken)
+            {
+                CallAnim(pose, g_keyWearer);
+                menupose = pose;
+            }
+
         }
         else if (str == CLCMD)
         {
@@ -354,11 +382,6 @@ default
         if (g_keyWearer!=llGetOwner())
         {
             llResetScript();
-        }
-        else if (g_szActAnim!="")
-        {
-            llSleep(4.0); // Delay the anim rebuild till hopefully everyone is ready
-            CallAnim(g_szActAnim,llGetKey());
         }
     }
 }

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////////
 // ------------------------------------------------------------------------------ //
-//                            OpenNC - legs cuff                                 //
-//                            version 3.968                                      //
+//                            OpenNC - Collar Pose                                //
+//                            version 3.962                                       //
 // ------------------------------------------------------------------------------ //
 // Licensed under the GPLv2 with additional requirements specific to Second Life® //
 // and other virtual metaverse environments.                                      //
@@ -13,13 +13,13 @@
 ////////////////////////////////////////////////////////////////////////////////////
 list elements;
 string parentmenu = "Cuff Poses";
-string submenu = "Leg Cuffs";
-string dbtoken = "cuff-legs";
-string CLCMD = "clegs";
-string defaultscard = "Leg Cuffs";
+string submenu = "Collar Pose";
+string dbtoken = "Collar_Pose";
+string CLCMD = "ccpose";
+string defaultscard = "Collar Pose";
 string menupose;
-list buttons;
-integer lastrank = 10000; //in this integer, save the rank of the person who posed the av, according to message map.  10000 means unposed
+list buttons = ["Off"];
+integer Collar_Chains = TRUE;
 key g_keyDialogID;
 key g_keyWearer;
 //MESSAGE MAP
@@ -81,7 +81,10 @@ integer LoadLocksParse( key queryid, string data)
         g_lstLocks = ["*Stop*"] + g_lstLocks;
         g_lstAnims = [""] + g_lstAnims;
         g_lstChains = [""] + g_lstChains;
-        llMessageLinked(LINK_THIS, LM_SETTING_REQUEST, dbtoken, "");//lets make sure we get our pose back once notecard is read
+        llMessageLinked(LINK_THIS, LM_SETTING_REQUEST, dbtoken, "");//lets make sure we get our pose sync back once notecard is read
+        // here we need to send a request to the collar to find out which pose we might be in
+        integer g_nCmdCollarChannel = getPersonalChannel(g_keyWearer,1111); // get the owner defined channel
+        llRegionSayTo(g_keyWearer,g_nCmdCollarChannel , (string)g_keyWearer + ":Collar_Pose");
         return -1;
     }
     pos_line ++;
@@ -110,6 +113,19 @@ integer LoadLocksParse( key queryid, string data)
 integer nGetOwnerChannel(integer nOffset)
 {
     integer chan = (integer)("0x"+llGetSubString((string)llGetOwner(),3,8)) + g_nCmdChannelOffset;
+    if (chan>0)
+    {
+        chan=chan*(-1);
+    }
+    if (chan > -10000)
+    {
+        chan -= 30000;
+    }
+    return chan;
+}
+integer getPersonalChannel(key owner, integer nOffset)//get collar channel
+{
+    integer chan = (integer)("0x"+llGetSubString((string)owner,2,7)) + nOffset;
     if (chan>0)
     {
         chan=chan*(-1);
@@ -214,7 +230,7 @@ CallAnim( string szMsg, key keyID )
     if ( szMsg == "Stop" )
     {
         g_szActAnim = "";
-        llMessageLinked( LINK_SET, LM_CUFF_ANIM, "l:Stop", keyID );
+        llMessageLinked( LINK_SET, LM_CUFF_ANIM, "c:Stop", keyID );
     }
     else
     {
@@ -226,11 +242,7 @@ CallAnim( string szMsg, key keyID )
             szChain    = llList2String(g_lstChains, nIdx);
             if (szAnim=="*none*")
             {// Cleo: We stop any maybe running leg anim, as on space we dont want anims
-                llMessageLinked( LINK_SET, LM_CUFF_ANIM, "l:Stop", keyID );
-            }
-            else // normal anim mode
-            {
-                llMessageLinked( LINK_SET, LM_CUFF_ANIM, "l:"+szAnim, keyID );
+                llMessageLinked( LINK_SET, LM_CUFF_ANIM, "c:Stop", keyID );
             }
             DoChains(keyID, szChain, "link");
         }
@@ -241,9 +253,9 @@ CallAnim( string szMsg, key keyID )
 //===============================================================================
 DoMenu(key id)
 {
-    string prompt = "\nLeg poses can be called from the chat line in the following format \n<pre>l:<Button_Name> ie. orl:Kneel";
+    string prompt = "\nThis will turn on and off cuff chains when you are in a collar pose.";
     prompt += "\nCurrent pose is - " + menupose;
-    list mybuttons = buttons + g_lstLocks;
+    list mybuttons = buttons;
     prompt += "\n\nPick an option.";
     g_keyDialogID=Dialog(id, prompt, mybuttons, [UPMENU], 0);
 }
@@ -297,29 +309,20 @@ default
                 CallAnim(g_szActAnim,llGetOwner());
             }
         }
-        else if (nNum >= COMMAND_OWNER && nNum <= COMMAND_WEARER)
+        else if (nNum >= COMMAND_OWNER && nNum <= COMMAND_WEARER && Collar_Chains == TRUE)
         {
-            if ( startswith(str,"*:") || startswith(str,"l:") )
+            list menuparams = llParseString2List(str, ["="], []);
+            string str1 = llList2String(menuparams, 0);
+            string pose = llList2String(menuparams, 1);
+            if (pose == "") pose = "Stop";
+            if (str1=="anim_currentpose")
             {
-                if (nNum <= lastrank)
-                {
-                    if (llGetSubString(str, 2,-1)=="Stop")
-                    {
-                        lastrank = 10000;
-                    }
-                    else
-                    {
-                        lastrank=nNum;
-                    }
-                    CallAnim(llGetSubString(str, 2,-1), id);
-                    llMessageLinked(LINK_THIS, LM_SETTING_SAVE, dbtoken +"="+ llGetSubString(str, 2,-1), "");
-                }
+                list menuparams = llParseString2List(pose, [","], []);
+                string str2 = llList2String(menuparams, 0);
+                CallAnim(str2, g_keyWearer);
+                menupose = str2;
             }
-            else if (str == "refreshmenu")
-            {
-                buttons = [];
-                llMessageLinked(LINK_SET, MENUNAME_REQUEST, submenu, "");
-            }
+            
         }
         else if (nNum == MENUNAME_REQUEST)
         {
@@ -352,19 +355,19 @@ default
                 {
                     llMessageLinked(LINK_THIS, iAuth, "menu "+ parentmenu, AV);//NEW command structer
                 }
-                else if (~llListFindList(g_lstLocks, [message]))
+                else if (message =="On")
                 {
-                    if (message=="*Stop*")
-                    {
-                        llMessageLinked(LINK_SET, COMMAND_NOAUTH, "l:Stop", AV);
-                        menupose = "none";
-                    }
-                    else
-                    {
-                        llMessageLinked(LINK_SET, COMMAND_NOAUTH, "l:"+message, AV);
-                        menupose = message;
-                    }
-                    DoMenu(AV);
+                    Collar_Chains = TRUE;
+                    llMessageLinked(LINK_THIS, LM_SETTING_SAVE, dbtoken +"="+ (string)Collar_Chains, "");
+                    buttons = ["Off"];
+                    DoMenu(id);
+                }
+                else if (message =="Off")
+                {
+                    Collar_Chains = FALSE;
+                    llMessageLinked(LINK_THIS, LM_SETTING_SAVE, dbtoken +"="+ (string)Collar_Chains, "");
+                    buttons = ["On"];
+                    DoMenu(id);
                 }
             }
         }
@@ -372,11 +375,10 @@ default
         {
             list menuparams = llParseString2List(str, ["="], []);
             string token = llList2String(menuparams, 0);
-            string pose = llList2String(menuparams, 1);
+            integer C_chains = (integer)llList2String(menuparams, 1);
             if(token == dbtoken)
             {
-                CallAnim(pose, g_keyWearer);
-                menupose = pose;
+                Collar_Chains = C_chains;
             }
 
         }
@@ -388,9 +390,6 @@ default
 
     on_rez(integer param)
     {
-        if (g_keyWearer!=llGetOwner())
-        {
             llResetScript();
-        }
     }
 }
