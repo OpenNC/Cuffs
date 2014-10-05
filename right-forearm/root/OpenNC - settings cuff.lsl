@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////////
 // ------------------------------------------------------------------------------ //
 //                            OpenNC - settings cuff                              //
-//                            version 3.960                                       //
+//                            version 3.980                                       //
 // ------------------------------------------------------------------------------ //
 // Licensed under the GPLv2 with additional requirements specific to Second Life® //
 // and other virtual metaverse environments.                                      //
@@ -12,7 +12,7 @@
 // Not now supported by OpenCollar at all                                         //
 ////////////////////////////////////////////////////////////////////////////////////
 
-// This script stores settings for other scripts in the collar.  In bygone days
+// This script stores settings for other scripts in the cuff.  In bygone days
 // it was responsible for storing them to an online database too.  It doesn't
 // do that anymore.  But so long as plugin scripts are still using central
 // storage like this, it's always possible we could bring back an online DB or
@@ -22,7 +22,7 @@
 //      ID_Group=Token~Value~Token~Value (etc) in notecard (hard storage)
 //      Group_Token=Value (Setting storage & script usage)
 //  where:
-//      ID_ = collar description's 3rd entry (after the 2nd tilde)
+//      ID_ = cuff description's 3rd entry (after the 2nd tilde)
 //              or "User_" for user customizations
 //      Group = what script/AddOn these settings are for
 //      Token = Setting to affect
@@ -30,42 +30,67 @@
 //  EX: oc_texture=Base~steel~Ring~stripes (notecard line)
 //      texture_Base=steel,texture_Ring=stripes (in the scripts)
 
-string PARENT_MENU = "Help/Debug";
-string SUBMENU = "Setting"; // "settings" in chat will call a mini dump .. this is to prevent double-up
+
+string PARENT_MENU = "Help/About";
+string SUBMENU = "Options"; 
+
 string DUMPCACHE = "Dump Cache";
 string PREFUSER = "☐ Personal";
 string PREFDESI = "☒ Personal"; // yes, I hate cutoff buttons
+//string WIKI = "Online Guide";
+string SETTINGSHELP="Settings Help";
+string SETTINGSHELP_URL="http://www.opencollar.at/options.html";
+string LOADCARD="Load Defaults";
 string UPMENU = "BACK";
 key g_kMenuID;
 key g_kWearer;
 string g_sScript;
+
 string defaultscard = "defaultsettings";
 string split_line; // to parse lines that were split due to lsl constraints
 integer defaultsline = 0;
 key defaultslineid;
 key card_key;
+
 // Message Map
+integer COMMAND_NOAUTH = 0;
 integer COMMAND_OWNER = 500;
+integer COMMAND_SECOWNER = 501;
+integer COMMAND_GROUP = 502;
 integer COMMAND_WEARER = 503;
+integer COMMAND_EVERYONE = 504;
+integer NOTIFY = 550;
+integer POPUP_HELP = 1001;
+
 integer LM_SETTING_SAVE = 2000;//scripts send messages on this channel to have settings saved to settings store
+//str must be in form of "token=value"
 integer LM_SETTING_REQUEST = 2001;//when startup, scripts send requests for settings on this channel
 integer LM_SETTING_RESPONSE = 2002;//the settings script will send responses on this channel
 integer LM_SETTING_DELETE = 2003;//delete token from store
 integer LM_SETTING_EMPTY = 2004;//sent when a token has no value in the store
+integer LM_SETTING_REQUEST_NOCACHE = 2005;
+
 integer MENUNAME_REQUEST = 3000;
 integer MENUNAME_RESPONSE = 3001;
+integer MENUNAME_REMOVE = 3003;
+
 integer DIALOG = -9000;
 integer DIALOG_RESPONSE = -9001;
+integer DIALOG_TIMEOUT = -9002;
+
 integer INTERFACE_CHANNEL;
+
+//string WIKI_URL = "http://www.opencollar.at/user-guide.html";
 string DESIGN_ID;
 list DESIGN_SETTINGS;
 list USER_SETTINGS;
 integer USER_PREF = FALSE; // user switch
-integer SCRIPTCOUNT; // number of scripts, to resend if the count changes
+
 integer SAY_LIMIT = 1024; // lsl "say" string limit
 integer CARD_LIMIT = 255; // lsl card-line string limit
 string ESCAPE_CHAR = "\\"; // end of card line, more value left for token
 
+/*
 Notify(key kID, string sMsg, integer iAlsoNotifyWearer)
 {
     if (kID == g_kWearer)
@@ -81,6 +106,7 @@ Notify(key kID, string sMsg, integer iAlsoNotifyWearer)
         }
     }
 }
+*/
 key Dialog(key kRCPT, string sPrompt, list lChoices, list lUtilityButtons, integer iPage, integer iAuth)
 {
     key kID = llGenerateKey();
@@ -88,21 +114,23 @@ key Dialog(key kRCPT, string sPrompt, list lChoices, list lUtilityButtons, integ
     + llDumpList2String(lChoices, "`") + "|" + llDumpList2String(lUtilityButtons, "`") + "|" + (string)iAuth, kID);
     return kID;
 }
+
 DoMenu(key keyID, integer iAuth)
 {
-    string sPrompt = "\n\nClick '" + DUMPCACHE + "' to dump all current settings to chat.";
-    sPrompt += "\n(copy/paste them to backup your defaultsettings)\n";
-    list lButtons = [DUMPCACHE];
+    string sPrompt = "\n" + DUMPCACHE + " prints current settings to chat.";
+    sPrompt += "\n" +LOADCARD+" restores the default settings.";
+    list lButtons = [DUMPCACHE,LOADCARD,SETTINGSHELP];
     if (USER_PREF)
     {
-        sPrompt += "\nUncheck " + PREFDESI + " to give designer settings priority.\n";
+        sPrompt += "\n\nUncheck " + PREFDESI + " to give designer settings priority.\n";
         lButtons += [PREFDESI];
     }
     else
     {
-        sPrompt += "\nCheck " + PREFUSER + " to give your personal settings priority.\n";
+        sPrompt += "\n\nCheck " + PREFUSER + " to give your personal settings priority.\n";
         lButtons += [PREFUSER];
     }
+    sPrompt +="\nwww.opencollar.at/options";
     g_kMenuID = Dialog(keyID, sPrompt, lButtons, [UPMENU], 0, iAuth);
 }
 
@@ -125,12 +153,14 @@ integer GroupIndex(list cache, string token)
     }
     return -1;
 }
+
 integer SettingExists(string token)
 {
     if (~llListFindList(USER_SETTINGS, [token])) return TRUE;
     if (~llListFindList(DESIGN_SETTINGS, [token])) return TRUE;
     return FALSE;
 }
+
 list SetSetting(list cache, string token, string value)
 {
     integer idx = llListFindList(cache, [token]);
@@ -254,7 +284,7 @@ list Add2OutList(list in)
         set = "User_";
         out = ["#---My Settings---#"];
     }
-    string new;
+    string buffer;
     string temp;
     string sid;
     string pre;
@@ -262,32 +292,53 @@ list Add2OutList(list in)
     string tok;
     string val;
     integer i;
-    for (; i < llGetListLength(in); i += 2)
+    
+    for (i=0 ; i < llGetListLength(in); i += 2)
     {
         tok = llList2String(in, i);
         val = llList2String(in, i + 1);
         group = SplitToken(tok, 0);
         tok = SplitToken(tok, 1);
-        if (group != sid) // new group
+        integer bIsSplit = FALSE ;
+        integer iAddedLength = llStringLength(buffer) + llStringLength(val) 
+            + llStringLength(sid) +llStringLength(set) + 2;
+        if (group != sid || llStringLength(buffer) == 0 || iAddedLength >= CARD_LIMIT ) // new group
         {
+            // Starting a new group.. flush the buffer to the output.
+            if ( llStringLength(buffer) ) out += [buffer] ;
             sid = group;
             pre = "\n" + set + sid + "=";
         }
-        else pre = "~";
+        else pre = buffer + "~";
         temp = pre + tok + "~" + val;
         while (llStringLength(temp))
         {
-            new = temp;
+            buffer = temp;
             if (llStringLength(temp) > CARD_LIMIT)
             {
-                new = llGetSubString(temp, 0, CARD_LIMIT - 2) + ESCAPE_CHAR;
-                temp = llDeleteSubString(temp, 0, CARD_LIMIT - 2);
+                bIsSplit = TRUE ;
+                buffer = llGetSubString(temp, 0, CARD_LIMIT - 2) + ESCAPE_CHAR;
+                temp = "\n" + llDeleteSubString(temp, 0, CARD_LIMIT - 2);
             }
             else temp = "";
-            out += [new];
+            if ( bIsSplit ) 
+            {
+                // if this is either a split buffer or one of it's continuation
+                // line outputs, 
+                out += [buffer];
+                buffer = "" ;
+            }
         }
     }
-    out = llListReplaceList(out, [llList2String(out, -1)], -1, -1);
+
+    // If there's anything left in the buffer, flush it to output.
+    if ( llStringLength(buffer) ) out += [buffer] ;
+    
+    // Possibly this line was supposed to reallocate the list to keep it from taking too
+    // much space. Logically, this is a 'do nothing' line - replacing the last item in 
+    // the 'out' list with the last item in the out list, with no changes.
+//////    out = llListReplaceList(out, [llList2String(out, -1)], -1, -1);
+
     return out;
 }
 
@@ -318,13 +369,15 @@ DumpCache(key id)
     out += [old];
     while (llGetListLength(out))
     {
-        Notify(id, llList2String(out, 0), TRUE);
+//        Notify(id, llList2String(out, 0), TRUE);
+        llMessageLinked(LINK_SET, NOTIFY, llList2String(out, 0) +" |TRUE",id);
         out = llDeleteSubList(out, 0, 0);
     }
 }
 
 SendValues()
 {
+    //Debug("Sending all settings");
     //loop through and send all the settings
     integer n = 0;
     string tok;
@@ -389,6 +442,11 @@ integer UserCommand(integer iNum, string sStr, key kID)
     {
         DumpCache(kID);
     }
+    else if (C == llToLower(LOADCARD))
+    {
+        defaultsline = 0;
+        defaultslineid = llGetNotecardLine(defaultscard, defaultsline);
+    }       
     else return FALSE;
     return TRUE;
 }
@@ -406,13 +464,14 @@ default
         if (INTERFACE_CHANNEL > -10000) INTERFACE_CHANNEL -= 30000;
         defaultsline = 0;
         defaultslineid = llGetNotecardLine(defaultscard, defaultsline);
-        SCRIPTCOUNT=llGetInventoryNumber(INVENTORY_SCRIPT);
         card_key = llGetInventoryKey(defaultscard);
         DESIGN_ID = llGetObjectDesc();
         integer i = llSubStringIndex(DESIGN_ID, "~");
         DESIGN_ID = llGetSubString(DESIGN_ID, i + 1, -1);
         i = llSubStringIndex(DESIGN_ID, "~");
         DESIGN_ID = llGetSubString(DESIGN_ID, i + 1, -1);
+        llMessageLinked(LINK_SET, MENUNAME_REQUEST, SUBMENU, "");
+        llMessageLinked(LINK_SET, MENUNAME_RESPONSE, PARENT_MENU + "|" + SUBMENU, "");
     }
 
     on_rez(integer iParam)
@@ -422,7 +481,7 @@ default
         if (g_kWearer == llGetOwner())
         {
             llSleep(0.5); // brief wait for others to reset
-            SendValues();        
+            SendValues();    
         }
         else llResetScript();
     }
@@ -435,26 +494,28 @@ default
             string tok;
             string val;
             integer i;
+            if (data == EOF && split_line != "" )
+            {
+                data = split_line ;
+                split_line = "" ;
+            }
             if (data != EOF)
             {
-                data = llStringTrim(data, STRING_TRIM_HEAD);
-                // first we can filter out & skip blank lines & remarks
-                if (data == "" || llGetSubString(data, 0, 0) == "#") jump nextline;
                 // check for "continued" line pieces
-                i = llSubStringIndex(data, ESCAPE_CHAR);
-                if (~i || llStringLength(split_line))
-                {
-                    split_line += data; // append string
-                    // if there is an escape character, lop it off and go to next line
-                    if (~i)
-                    {
-                        split_line = llGetSubString(split_line, 0, -2);
-                        jump nextline;
-                    }
-                    // if not, clear the temp string & process this data
-                    data = split_line;
-                    split_line = "";
+                if ( llStringLength(split_line) ) 
+                { 
+                    data = split_line + data ;
+                    split_line = "" ;
                 }
+                if ( llGetSubString( data, -1, -1) == ESCAPE_CHAR )
+                {
+                    split_line = llDeleteSubString( data, -1, -1) ;
+                    jump nextline ;
+                }
+                // first we can filter out & skip blank lines & remarks
+                data = llStringTrim(data, STRING_TRIM_HEAD);
+                if (data == "" || llGetSubString(data, 0, 0) == "#") jump nextline;
+                    
                 // Next we wish to peel the special settings for this collar
                 // unique collar id is followed by Script (that settings are for) + "=tok~val~tok~val"
                 i = llSubStringIndex(data, "_");
@@ -494,7 +555,8 @@ default
     {
         if (UserCommand(iNum, sStr, id)) return;
         if (iNum == LM_SETTING_SAVE)
-        { //save the token, value
+        {
+            //save the token, value
             list params = llParseString2List(sStr, ["="], []);
             string token = llList2String(params, 0);
             string value = llList2String(params, 1);
@@ -504,7 +566,8 @@ default
             else USER_SETTINGS = SetSetting(USER_SETTINGS, token, value);
         }
         else if (iNum == LM_SETTING_REQUEST)
-        {//check the cache for the token
+        {
+            //check the cache for the token
             if (SettingExists(sStr))
             {
                 llMessageLinked(LINK_SET, LM_SETTING_RESPONSE, sStr + "=" + GetSetting(sStr), "");
@@ -533,28 +596,24 @@ default
                     llMessageLinked(LINK_THIS, iAuth, "menu "+ PARENT_MENU, kAv);
                     return;
                 }
+
+               if(sMessage == SETTINGSHELP)
+                    {
+                        llSleep(0.2);
+                        llLoadURL(kAv, "\n\nSettings can be permanently stored and backed up even over a manual script reset by saving them to the defaultsettings notecard inside your cuffs. For instructions, please visit this page on the OpenCollar website.", SETTINGSHELP_URL);
+                        return;
+                    }
                 if (iAuth < COMMAND_OWNER || iAuth > COMMAND_WEARER) return;
-                if (sMessage == PREFDESI)
-                {
-                    USER_PREF = FALSE;
-                    USER_SETTINGS = SetSetting(USER_SETTINGS, g_sScript + "Pref", "Designer");
+                
+                if(iAuth==COMMAND_OWNER||iAuth==COMMAND_WEARER)
+                { //moving everything to UserCommand to save doubling up on code.
+                    UserCommand(iAuth,llGetSubString(g_sScript,0,-2)+" "+sMessage,kAv);
                 }
-                else if (sMessage == PREFUSER)
-                {
-                    USER_PREF = TRUE;
-                    USER_SETTINGS = SetSetting(USER_SETTINGS, g_sScript + "Pref", "User");
-                }
-                else if (sMessage == DUMPCACHE)
-                {
-                    if (iAuth == COMMAND_OWNER || iAuth == COMMAND_WEARER) DumpCache(kAv);
-                    else Notify(kAv, "Only Owners & Wearer may access this feature", FALSE);
-                }
+                else //Notify(kAv,"Sorry, only Owners & Wearers may acces this feature.",FALSE);
+                    llMessageLinked(LINK_SET, NOTIFY, "Only Owners & Wearer may access this feature |FALSE",kAv);
+                    
                 DoMenu(kAv, iAuth);
             }
-        }
-        else if (iNum == MENUNAME_REQUEST && sStr == PARENT_MENU)
-        {
-            llMessageLinked(LINK_SET, MENUNAME_RESPONSE, PARENT_MENU + "|" + SUBMENU, "");
         }
     }
 
@@ -563,18 +622,15 @@ default
         if (change & CHANGED_OWNER) llResetScript();
         if (change & CHANGED_INVENTORY)
         {
-            if (SCRIPTCOUNT != llGetInventoryNumber(INVENTORY_SCRIPT))
-            {// number of scripts changed
-                // resend values and store new number
-                SendValues();
-                SCRIPTCOUNT=llGetInventoryNumber(INVENTORY_SCRIPT);
-            }
             if (llGetInventoryKey(defaultscard) != card_key)
-            {// the defaultsettings card changed.  Re-read it.
+            {
+                // the defaultsettings card changed.  Re-read it.
                 defaultsline = 0;
                 defaultslineid = llGetNotecardLine(defaultscard, defaultsline);
                 card_key = llGetInventoryKey(defaultscard);
             }
+            llSleep(1.0);   //pause, then send values if inventory changes, in case script was edited and needs its settings again
+            SendValues();
         }
     }
 }

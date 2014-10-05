@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////////
 // ------------------------------------------------------------------------------ //
 //                            OpenNC - lock cuff                                  //
-//                            version 3.960                                       //
+//                            version 3.980                                       //
 // ------------------------------------------------------------------------------ //
 // Licensed under the GPLv2 with additional requirements specific to Second Life® //
 // and other virtual metaverse environments.                                      //
@@ -29,6 +29,7 @@ string UNLOCK = "UNLOCK";
 //MESSAGE MAP
 integer COMMAND_OWNER = 500;
 integer COMMAND_WEARER = 503;
+integer NOTIFY = 550;
 integer LM_SETTING_SAVE = 2000;//scripts send messages on this channel to have settings saved to httpdb
 integer LM_SETTING_RESPONSE = 2002;//the httpdb script will send responses on this channel
 integer LM_SETTING_DELETE = 2003;//delete token from DB
@@ -43,23 +44,19 @@ integer LM_CUFF_CMD = -551001;//send a cuff command
 integer g_bDetached = FALSE;
 key g_kWearer;
 string CTYPE = "cuffs";
-
+/*
 Notify(key kID, string sMsg, integer iAlsoNotifyWearer)
 {
     if (kID == g_kWearer)
-    {
         llOwnerSay(sMsg);
-    }
     else
     {
         llInstantMessage(kID, sMsg);
         if (iAlsoNotifyWearer)
-        {
             llOwnerSay(sMsg);
-        }
     }
 }
-
+*/
 NotifyOwners(string sMsg)
 {
     integer n;
@@ -72,7 +69,8 @@ NotifyOwners(string sMsg)
             return;
         }
         else
-            Notify((key)llList2String(g_lOwners, n), sMsg, FALSE);
+//            Notify((key)llList2String(g_lOwners, n), sMsg, FALSE);
+            llMessageLinked(LINK_SET, NOTIFY, sMsg + " |FALSE",(key)llList2String(g_lOwners, n));
     }
 }
 
@@ -117,14 +115,10 @@ BuildLockElementList()//EB
     { // read description
         lParams=llParseString2List((string)llGetObjectDetails(llGetLinkKey(n), [OBJECT_DESC]), ["~"], []);
         // check inf name is lock name
-        if (llList2String(lParams, 0)==g_sLockPrimName || llList2String(lParams, 0)==g_sClosedLockPrimName)
-        {  // if so store the number of the prim
+        if (llList2String(lParams, 0)==g_sLockPrimName || llList2String(lParams, 0)==g_sClosedLockPrimName)  // if so store the number of the prim
             g_lClosedLockElements += [n];
-        }
-        else if (llList2String(lParams, 0)==g_sOpenLockPrimName) 
-        { // if so store the number of the prim
+        else if (llList2String(lParams, 0)==g_sOpenLockPrimName)  // if so store the number of the prim
             g_lOpenLockElements += [n];
-        }
     }
 }
 
@@ -135,14 +129,10 @@ SetLockElementAlpha() //EB
     if (g_iLocked) fAlpha = 1.0; else fAlpha = 0.0;
     integer iLinkElements = llGetListLength(g_lOpenLockElements);
     for (n = 0; n < iLinkElements; n++)
-    {
         llSetLinkAlpha(llList2Integer(g_lOpenLockElements,n), 1.0 - fAlpha, ALL_SIDES);
-    }
     iLinkElements = llGetListLength(g_lClosedLockElements);
     for (n = 0; n < iLinkElements; n++)
-    {
         llSetLinkAlpha(llList2Integer(g_lClosedLockElements,n), fAlpha, ALL_SIDES);
-    }
 }
 
 Lock()
@@ -185,50 +175,54 @@ default
         {
             if (sStr == "settings")
             {
-                if (g_iLocked) Notify(kID, "Locked.", FALSE);
-                else Notify(kID, "Unlocked.", FALSE);
+                if (g_iLocked)// Notify(kID, "Locked.", FALSE);
+                    llMessageLinked(LINK_SET, NOTIFY, "Locked |FALSE",kID);
+                else //Notify(kID, "Unlocked.", FALSE);
+                llMessageLinked(LINK_SET, NOTIFY, "Unlocked |FALSE",kID);
             }
             else if (sStr == "refreshmenu")
             {
                 llSleep (0.1);
                 if (g_iLocked)
-                {
                     llMessageLinked(LINK_SET, MENUNAME_RESPONSE, g_sParentMenu + "|" + UNLOCK, "");
-                }
                 else
-                {
                     llMessageLinked(LINK_SET, MENUNAME_RESPONSE, g_sParentMenu + "|" + LOCK, "");
-                }
             }
             else if (sStr == "lock" || (!g_iLocked && sStr == "togglelock"))
             {
                 if (iNum == COMMAND_OWNER || kID == g_kWearer )
                 {   //primary owners and wearer can lock and unlock. no one else
                     Lock();
-                    Notify(kID, "Locked.", FALSE);
+//                    Notify(kID, "Locked.", FALSE);
+                    llMessageLinked(LINK_SET, NOTIFY, "Locked |FALSE",kID);
                     if (kID!=g_kWearer) llOwnerSay("Your " + CTYPE + " have been locked.");
                 }
-                else Notify(kID, "Sorry, only primary owners and wearer can lock the " + CTYPE + ".", FALSE);
+                else //Notify(kID, "Sorry, only primary owners and wearer can lock the " + CTYPE + ".", FALSE);
+                    llMessageLinked(LINK_SET, NOTIFY, "Sorry, only primary owners and wearer can lock the " + CTYPE + ". |FALSE",kID);
             }
             else if (sStr == "runaway" || sStr == "unlock" || (g_iLocked && sStr == "togglelock"))
             {
                 if (iNum == COMMAND_OWNER)
                 {  //primary owners can lock and unlock. no one else
                     Unlock();
-                    Notify(kID, "Unlocked.", FALSE);
+//                    Notify(kID, "Unlocked.", FALSE);
+                    llMessageLinked(LINK_SET, NOTIFY, "Unlocked |FALSE",kID);
                     if (kID!=g_kWearer) llOwnerSay("Your " + CTYPE + " have been unlocked.");
                 }
-                else Notify(kID, "Sorry, only primary owners can unlock the " + CTYPE + ".", FALSE);
+                else //Notify(kID, "Sorry, only primary owners can unlock the " + CTYPE + ".", FALSE);
+                    llMessageLinked(LINK_SET, NOTIFY, "Sorry, only primary owners and wearer can lock the " + CTYPE + ". |FALSE",kID);
             }
             else if (sStr == "menu " + LOCK)
             {
                 if (iNum == COMMAND_OWNER || kID == g_kWearer )
                 {   //primary owners and wearer can lock. no one else
                     Lock();
-                    Notify(kID, "Locked.", FALSE);
+//                    Notify(kID, "Locked.", FALSE);
+                    llMessageLinked(LINK_SET, NOTIFY, "Locked. |FALSE",kID);
                     if (kID!=g_kWearer) llOwnerSay("Your " + CTYPE + " has been locked.");
                 }
-                else Notify(kID, "Sorry, only primary owners and wearer can lock the " + CTYPE + ".", FALSE);
+                else //Notify(kID, "Sorry, only primary owners and wearer can lock the " + CTYPE + ".", FALSE);
+                    llMessageLinked(LINK_SET, NOTIFY, "Sorry, only primary owners and wearer can lock the " + CTYPE + ". |FALSE",kID);
                 llMessageLinked(LINK_SET, iNum, "menu " + g_sParentMenu, kID);
             }
             else if (sStr == "menu " + UNLOCK)
@@ -236,10 +230,12 @@ default
                 if (iNum == COMMAND_OWNER)
                 {  //primary owners can unlock. no one else
                     Unlock();
-                    Notify(kID, "Unlocked.", FALSE);
+//                    Notify(kID, "Unlocked.", FALSE);
+                    llMessageLinked(LINK_SET, NOTIFY, "Unlocked. |FALSE",kID);
                     if (kID!=g_kWearer) llOwnerSay("Your " + CTYPE + " has been unlocked.");
                 }
-                else Notify(kID, "Sorry, only primary owners can unlock the " + CTYPE + ".", FALSE);
+                else //Notify(kID, "Sorry, only primary owners can unlock the " + CTYPE + ".", FALSE);
+                    llMessageLinked(LINK_SET, NOTIFY, "Sorry, only primary owners and wearer can unlock the " + CTYPE + ". |FALSE",kID);
                 llMessageLinked(LINK_SET, iNum, "menu " + g_sParentMenu, kID);
             }
         }
@@ -267,9 +263,7 @@ default
             }
             else if (sToken == "Global_CType") CTYPE = sValue;
             else if (sToken == "auth_owner")
-            {
                 g_lOwners = llParseString2List(sValue, [","], []);
-            }
         }
         else if (iNum == LM_SETTING_SAVE)
         {
@@ -277,42 +271,28 @@ default
             string sToken = llList2String(lParams, 0);
             string sValue = llList2String(lParams, 1);
             if (sToken == "auth_owner")
-            {
                 g_lOwners = llParseString2List(sValue, [","], []);
-            }
         }
         else if (iNum == MENUNAME_REQUEST && sStr == g_sParentMenu)
         {
             if (g_iLocked)
-            {
                 llMessageLinked(LINK_SET, MENUNAME_RESPONSE, g_sParentMenu + "|" + UNLOCK, "");
-            }
             else
-            {
                 llMessageLinked(LINK_SET, MENUNAME_RESPONSE, g_sParentMenu + "|" + LOCK, "");
-            }
         }
         else if (iNum == RLV_REFRESH)
         {
             if (g_iLocked)
-            {
                 llMessageLinked(LINK_SET, RLV_CMD, "detach=n", "");
-            }
             else
-            {
                 llMessageLinked(LINK_SET, RLV_CMD, "detach=y", "");
-            }
         }
         else if (iNum == RLV_CLEAR)
         {
             if (g_iLocked)
-            {
                 llMessageLinked(LINK_SET, RLV_CMD, "detach=n", "");
-            }
             else
-            {
                 llMessageLinked(LINK_SET, RLV_CMD, "detach=y", "");
-            }
         }
     }
     attach(key kID)
@@ -335,16 +315,12 @@ default
     changed(integer iChange)
     {
         if (iChange & CHANGED_OWNER)
-        {
             llResetScript();
-        }
     }
 
     on_rez(integer start_param)
     {
         if (g_kWearer != llGetOwner())
-        {
             llResetScript();
-        }
     }
 }

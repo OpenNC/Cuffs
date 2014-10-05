@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////////
 // ------------------------------------------------------------------------------ //
 //                              OpenNC - update                                   //
-//                              version 3.960                                     //
+//                              version 3.980                                     //
 // ------------------------------------------------------------------------------ //
 // Licensed under the GPLv2 with additional requirements specific to Second Life® //
 // and other virtual metaverse environments.                                      //
@@ -12,7 +12,6 @@
 // Not now supported by OpenCollar at all                                         //
 ////////////////////////////////////////////////////////////////////////////////////
 integer g_iListener0;
-integer g_iListener1;
 key wearer;
 string g_sUpdaterName="OpenNC Updater";
 integer LM_CUFF_CMD = -551001;        // used as channel for linkemessages - sending commands
@@ -34,16 +33,10 @@ key Dialog(key kRCPT, string sPrompt, list lChoices)
     return kID;
 } 
 
-Notify(key kID, string sMsg, integer iAlsoNotifyWearer)
+Notify(key kID, string sMsg)
 {
     if (kID == wearer)
-    {
         llOwnerSay(sMsg);
-    }
-    else
-    {
-//        llInstantMessage(kID, sMsg);
-    }
 }
 
 ConfirmUpdate(key kUpdater)
@@ -55,9 +48,7 @@ ConfirmUpdate(key kUpdater)
 integer IsOpenCollarScript(string sName)
 {
     if (llList2String(llParseString2List(sName, [" - "], []), 0) == "OpenCollar")
-    {
         return TRUE;
-    }
     return FALSE;
 }
 
@@ -72,9 +63,7 @@ string LeftOfDecimal(string str)
 {
     integer idx = llSubStringIndex(str, ".");
     if (idx == -1)
-    {
         return str;
-    }
     return llGetSubString(str, 0, idx - 1);
 }
 
@@ -82,9 +71,7 @@ string RightOfDecimal(string str)
 {
     integer idx = llSubStringIndex(str, ".");
     if (idx == -1)
-    {
         return "0";
-    }
     return llGetSubString(str, idx + 1, -1);
 }
 
@@ -109,13 +96,9 @@ integer GetOwnerChannel(key kOwner, integer iOffset)
 {
     integer iChan = (integer)("0x"+llGetSubString((string)kOwner,2,7)) + iOffset;
     if (iChan>0)
-    {
         iChan=iChan*(-1);
-    }
     if (iChan > -10000)
-    {
         iChan -= 30000;
-    }
     return iChan;
 }
 
@@ -124,36 +107,51 @@ default
     state_entry()
     {
         llListenRemove(g_iListener0);
-        llListenRemove(g_iListener1);
         //check if we're in an updater.  if so, then just shut self down and
         //don't do regular startup routine.
         if (llSubStringIndex(llGetObjectName(), "Updater") != -1)
-        {
             llSetScriptState(llGetScriptName(), FALSE);
-        }
         // we just started up.  Remember owner.
         wearer = llGetOwner();
         g_iListener0 = llListen(69, "", "", "");//yeh why not?
-        g_iListener1 = llListen(0, "", "", "UPDATE");
         llMessageLinked(LINK_THIS, LM_CUFF_CMD, "reset", "");
     }
 
     on_rez(integer param)
     {
-        // only reset if owner has changed
+        if (llGetAttached() >= 1)
+            llSetScriptState(llGetScriptName(),FALSE);
         llListenRemove(g_iListener0);
-        llListenRemove(g_iListener1);
         llResetScript();
     }
+    
+    touch_start(integer nCnt)
+    {
+        key id = llDetectedKey(0);
+        if (llGetAttached() == 0) // Only do if rezzed
+        {
+            if (id == wearer)
+                {
+                    string sVersion = llList2String(llParseString2List(llGetObjectDesc(), ["~"], []), 1);
+                    g_iUpdatersNearBy = 0;
+                    g_iWillingUpdaters = 0;
+                    g_kUpdater = id;
+                    Notify(id,"Searching for a nearby updater.");
+                    g_iUpdateHandle = llListen(g_iUpdateChan, "", "", "");
+                    llRegionSay(g_iUpdateChan, "UPDATE|" + sVersion);
+                    llSetTimerEvent(10.0); //set a timer to close the g_iListener if no response
+                }
+                else
+                    Notify(id,"Only the wearer can update the " + CTYPE + ".");
+            }
+        }
 
     link_message(integer sender, integer num, string str, key id )
     {   //llSay(0,(string)num+ " "+str);
         if (num == MENUNAME_RESPONSE)
         {
-            if ((str == "Main|Cuff Poses") || (str == "Main| Poses") || (str == "Main|Cuffs"))
-            { // change the updater channel here since we are in a main cuff
+            if ((str == "Main|Cuff Poses") || (str == "Main| Poses") || (str == "Main|Cuffs")) // change the updater channel here since we are in a main cuff
                 g_iUpdateChan = -7483215;
-            }
         }
     }
 
@@ -164,9 +162,7 @@ default
             list lTemp = llParseString2List(message, [","],[]);
             string sCommand = llList2String(lTemp, 0);
             if(message == "nothing to update")
-            {
                 g_iUpdatersNearBy++;
-            }
             else if( message == "get ready")
             {
                 g_iUpdatersNearBy++;
@@ -178,28 +174,8 @@ default
                 llSetTimerEvent(0);
             }
         }
-        if (message == "UPDATE")
-            {
-                if (id == wearer)
-                {
-                    string sVersion = llList2String(llParseString2List(llGetObjectDesc(), ["~"], []), 1);
-                    g_iUpdatersNearBy = 0;
-                    g_iWillingUpdaters = 0;
-                    g_kUpdater = id;
-                    Notify(id,"Searching for a nearby updater.",FALSE);
-                    g_iUpdateHandle = llListen(g_iUpdateChan, "", "", "");
-                    llWhisper(g_iUpdateChan, "UPDATE|" + sVersion);
-                    llSetTimerEvent(10.0); //set a timer to close the g_iListener if no response
-                }
-                else
-                {
-                    Notify(id,"Only the wearer can update the " + CTYPE + ".",FALSE);
-                }
-            }
             if (message == "Yes")
-                {
                     SayUpdatePin(g_kUpdaterOrb);
-                }
     }
 
     timer()
@@ -209,13 +185,9 @@ default
         if (g_iUpdatersNearBy > -1)
         {
             if (!g_iUpdatersNearBy)
-            {
-                Notify(g_kUpdater,"No updaters found.  Please rez a cuff updater within 10m and try again",FALSE);
-            }
+                Notify(g_kUpdater,"No updaters found.  Please rez a cuff updater within 10m and try again");
             else if (g_iWillingUpdaters > 1)
-            {
-                    Notify(g_kUpdater,"Multiple updaters were found within 10m.  Please remove all but one and try again",FALSE);
-            }
+                    Notify(g_kUpdater,"Multiple updaters were found within 10m.  Please remove all but one and try again");
             g_iUpdatersNearBy = -1;
             g_iWillingUpdaters = -1;
         }

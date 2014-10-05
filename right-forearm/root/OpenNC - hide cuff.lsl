@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////////
 // ------------------------------------------------------------------------------ //
-//                            OpenNC - hide cuff                                 //
-//                            version 3.960                                       //
+//                            OpenNC - hide cuff                                  //
+//                            version 3.980                                       //
 // ------------------------------------------------------------------------------ //
 // Licensed under the GPLv2 with additional requirements specific to Second Life® //
 // and other virtual metaverse environments.                                      //
@@ -32,6 +32,8 @@ string g_sAppLockToken = "Appearance_Lock";
 //MESSAGE MAP
 integer COMMAND_OWNER = 500;
 integer COMMAND_WEARER = 503;
+integer NOTIFY = 550;
+integer SENDCMD= 551;
 integer LM_SETTING_SAVE = 2000;//scripts send messages on this channel to have settings saved to httpdb
 integer LM_SETTING_RESPONSE = 2002;//the httpdb script will send responses on this channel
 integer LM_SETTING_DELETE = 2003;//delete token from DB
@@ -49,64 +51,40 @@ string SHOWN = "Shown";
 string HIDDEN = "Hidden";
 string ALL = "All";
 string g_sScript;
-//-------extra cuff---------------
-integer g_nCmdChannel    = -190890;        // command channel
-integer g_nCmdChannelOffset = 0xCC0CC;       // offset to be used to make sure we do not interfere with other items using the same technique for
+
+//integer g_nCmdChannel    = -190890;  // command channel
+//integer g_nCmdChannelOffset = 0xCC0CC;  // offset to be used to make sure we do not interfere with other items using the same technique for
 string g_szHiddenToken="hide";
 string g_szModToken = "rlac"; // valid token for this module
-//===============================================================================
-//= parameters   :  integer nOffset        Offset to make sure we use really a unique channel
-//=
-//= description  : Function which calculates a unique channel number based on the owner key, to reduce lag
-//=
-//= returns      : Channel number to be used
-//===============================================================================
+/*
 integer nGetOwnerChannel(integer nOffset)
 {
     integer chan = (integer)("0x"+llGetSubString((string)llGetOwner(),3,8)) + nOffset;
     if (chan>0)
-    {
         chan=chan*(-1);
-    }
     if (chan > -10000)
-    {
-        chan -= 30000;
-    }
+        chan -= 30002;
     return chan;
 }
-//===============================================================================
-//= parameters   :    string    szSendTo    prefix of receiving modul
-//=                    string    szCmd       message string to send
-//=                    key        keyID        key of the AV or object
-//=
-//= retun        :    none
-//=
-//= description  :    Sends the command with the prefix and the UUID
-//=                    on the command channel
-//=
-//===============================================================================
-
+*/
 SendCmd( string szSendTo, string szCmd, key keyID )
 {
-    llRegionSay(g_nCmdChannel + 1, g_szModToken + "|" + szSendTo + "|" + szCmd + "|" + (string)keyID);
+//    llRegionSayTo(g_kWearer,g_nCmdChannel + 1, g_szModToken + "|" + szSendTo + "|" + szCmd + "|" + (string)keyID);
+     llMessageLinked( LINK_SET, SENDCMD, g_szModToken + "|" + szSendTo + "|" + szCmd + "|" + (string)keyID, keyID);
 }
-//-------end extra cuff---------------
+/*
 Notify(key kID, string sMsg, integer iAlsoNotifyWearer)
 {
     if (kID == g_kWearer)
-    {
         llOwnerSay(sMsg);
-    }
     else
     {
         llInstantMessage(kID, sMsg);
         if (iAlsoNotifyWearer)
-        {
             llOwnerSay(sMsg);
-        }
     }
 }
-
+*/
 key Dialog(key kRCPT, string sPrompt, list lChoices, list lUtilityButtons, integer iPage, integer iAuth)
 {
     key kID = llGenerateKey();
@@ -120,9 +98,7 @@ string Float2String(float in)
     string out = (string)in;
     integer i = llSubStringIndex(out, ".");
     while (~i && llStringLength(llGetSubString(out, i + 2, -1)) && llGetSubString(out, -1, -1) == "0")
-    {
         out = llGetSubString(out, 0, -2);
-    }
     return out;
 }
 
@@ -165,13 +141,9 @@ SetElementAlpha(string element_to_set, float fAlpha)
             //update element in list of settings
             integer iIndex = llListFindList(g_lAlphaSettings, [sElement]);
             if (iIndex == -1)
-            {
                 g_lAlphaSettings += [sElement, sAlpha];
-            }
             else
-            {
                 g_lAlphaSettings = llListReplaceList(g_lAlphaSettings, [sAlpha], iIndex + 1, iIndex + 1);
-            }
         }
     }
 }
@@ -204,21 +176,15 @@ ElementMenu(key kAv, integer iAuth)
     {
         string sElement = llList2String(g_lElements, n);
         integer iIndex = llListFindList(g_lAlphaSettings, [sElement]);
-        if (iIndex == -1)
-        {//element not found in settings list.  Assume it's currently shown
+        if (iIndex == -1) //element not found in settings list.  Assume it's currently shown
             g_lButtons += HIDE + " " + sElement;
-        }
         else
         {
             float fAlpha = (float)llList2String(g_lAlphaSettings, iIndex + 1);
-            if (fAlpha)
-            {//currently shown
+            if (fAlpha) //currently shown
                 g_lButtons += HIDE + " " + sElement;
-            }
-            else
-            {//not currently shown
+            else//not currently shown
                 g_lButtons += SHOW + " " + sElement;
-            }
         }
     }
     g_lButtons += ["Show" + " " + ALL, "Hide" + " " + ALL];
@@ -231,13 +197,9 @@ string ElementType(integer linkiNumber)
     //each prim should have <elementname> in its description, plus "nocolor" or "notexture", if you want the prim to  not appear in the color or texture menus
     list lParams = llParseString2List(sDesc, ["~"], []);
     if ((~(integer)llListFindList(lParams, [g_sIgnore])) || sDesc == "" || sDesc == " " || sDesc == "(No Description)")
-    {
         return g_sIgnore;
-    }
     else
-    {
         return llList2String(lParams, 0);
-    }
 }
 
 BuildElementList()
@@ -248,9 +210,7 @@ BuildElementList()
     {
         string sElement = ElementType(n);
         if (!((~(integer)llListFindList(g_lElements, [sElement]))) && sElement != g_sIgnore)
-        {
             g_lElements += [sElement];
-        }
     }
     g_lElements = llListSort(g_lElements, 1, TRUE);
 }
@@ -264,13 +224,12 @@ integer AppLocked(key kID)
 {
     if (g_iAppLock)
     {
-        Notify(kID,"The appearance of the " + CTYPE + " is locked. You cannot access this menu now!", FALSE);
+//        Notify(kID,"The appearance of the " + CTYPE + " is locked. You cannot access this menu now!", FALSE);
+        llMessageLinked(LINK_SET, NOTIFY, "The appearance of the " + CTYPE + " is locked. You cannot access this menu now! |FALSE",kID);
         return TRUE;
     }
     else
-    {
         return FALSE;
-    }
 }
 
 default
@@ -282,10 +241,8 @@ default
         BuildElementList();
         llSleep(1.0);
         llMessageLinked(LINK_SET, MENUNAME_RESPONSE, g_sParentMenu + "|" + g_sSubMenu, "");
-        //-------extra cuffs
         // get unique channel numbers for the command and cuff channel, cuff channel will be used for LG chains of cuffs as well
-        g_nCmdChannel = nGetOwnerChannel(g_nCmdChannelOffset);
-        //-------end extra cuffs
+//        g_nCmdChannel = nGetOwnerChannel(g_nCmdChannelOffset);
     }
 
     on_rez(integer iParam)
@@ -301,36 +258,30 @@ default
             string sCommand = llToLower(llList2String(lParams, 0));
             string sValue = llToLower(llList2String(lParams, 1));
             string sElement = llList2String(lParams, 1);
-            if (sStr == "hide")
+            if (sStr == "chide")
             {
                 if (!AppLocked(kID))
                 {
                     SetAllElementsAlpha(0.0);
                     SaveAlphaSettings();
-                    //-------extra cuff---------------
                     // OpenNC: send hide to slave cuffs
                     SendCmd("*","HideMe=1","");
-                    //-------end extra cuff---------------
                 }
             }
-            else if (sStr == "show")
+            else if (sStr == "cshow")
             {
                 if (!AppLocked(kID))
                 {
                     SetAllElementsAlpha(1.0);
                     SaveAlphaSettings();
-                    //-------extra cuff---------------
                     // OpenNC: send show to slave cuffs
                     SendCmd("*","HideMe=0","");
-                    //-------end extra cuff---------------
                 }
             }
             else if (sStr  == "menu " + g_sSubMenu || sStr == "chidemenu")
             {
                 if (!AppLocked(kID))
-                {
                     ElementMenu(kID, iNum);
-                }
             }
             else if (sStr == "refreshmenu")
             {
@@ -346,7 +297,7 @@ default
                     SaveAlphaSettings();
                 }
             }
-            else if (StartsWith(sStr, "hide"))
+            else if (StartsWith(sStr, "chide"))
             {
                 if (!AppLocked(kID))
                 {
@@ -354,7 +305,7 @@ default
                     SaveAlphaSettings();
                 }
             }
-            else if (StartsWith(sStr, "show"))
+            else if (StartsWith(sStr, "cshow"))
             {
                 if (!AppLocked(kID))
                 {
@@ -367,26 +318,19 @@ default
                 if (iNum == COMMAND_OWNER)
                 {
                     if(llGetSubString(sStr, -1, -1) == "0")
-                    {
                         g_iAppLock  = FALSE;
-                    }
                     else
-                    {
                         g_iAppLock  = TRUE;
-                    }
                 }
             }
             else if (sStr == "settings")
             {
                 if (llGetAlpha(ALL_SIDES) == 0.0)
-                {
-                    Notify(kID, "Hidden", FALSE);
-                }
+//                    Notify(kID, "Hidden", FALSE);
+                    llMessageLinked(LINK_SET, NOTIFY, "Hidden |FALSE",kID);
             }
             else if (iNum == COMMAND_OWNER && sStr == "runaway")
-            {
                 SetAllElementsAlpha(1.0);
-            }
         }
         else if (iNum == LM_SETTING_RESPONSE)
         {
@@ -403,15 +347,11 @@ default
                 SetElementAlpha(sToken, (float)sValue);
             }
             else if (sToken == g_sAppLockToken)
-            {
                 g_iAppLock = (integer)sValue;
-            }
             else if (sToken == "Global_CType") CTYPE = sValue;
         }
         else if (iNum == MENUNAME_REQUEST && sStr == g_sParentMenu)
-        {
             llMessageLinked(LINK_SET, MENUNAME_RESPONSE, g_sParentMenu + "|" + g_sSubMenu, "");
-        }
         else if (iNum == DIALOG_RESPONSE)
         {
             if (kID==g_kDialogID)
@@ -421,13 +361,12 @@ default
                 string sMessage = llList2String(lMenuParams, 1);
                 integer iPage = (integer)llList2String(lMenuParams, 2);
                 integer iAuth = (integer)llList2String(lMenuParams, 3);
-                if (sMessage == UPMENU)
-                { //main menu
+                if (sMessage == UPMENU) //main menu
                     llMessageLinked(LINK_SET, iAuth, "menu " + g_sParentMenu, kAv);
-                }
                 else if (sMessage == "*Touch*")
                 {
-                    Notify(kAv, "Please touch the part of the " + CTYPE + " you want to hide or show. You can press ctr+alt+T to see invisible parts.", FALSE);
+//                    Notify(kAv, "Please touch the part of the " + CTYPE + " you want to hide or show. You can press ctr+alt+T to see invisible parts.", FALSE);
+                    llMessageLinked(LINK_SET, NOTIFY, "Please touch the part of the " + CTYPE + " you want to hide or show. You can press ctr+alt+T to see invisible parts. |FALSE",kAv);
                     g_kTouchID = TouchRequest(kAv, TRUE, FALSE, iAuth);
                 }
                 else
@@ -437,35 +376,24 @@ default
                     string sElement = llList2String(lParams, 1);
                     float fAlpha;
                     if (sCmd == HIDE)
-                    {
                         fAlpha = 0.0;
-                    }
                     else if (sCmd == SHOW)
-                    {
                         fAlpha = 1.0;
-                    }
-
                     if (sElement == ALL)
                     {
                         if (sCmd == "Show")
                         {
                             SetAllElementsAlpha(1.0);
-                            //-------extra cuff---------------
                             SendCmd("*","HideMe=0","");
-                            //-------end extra cuff---------------
                         }
                         else if (sCmd == "Hide")
                         {
                             SetAllElementsAlpha(0.0);
-                            //-------extra cuff---------------
                             SendCmd("*","HideMe=1","");
-                            //-------end extra cuff---------------
                         }
                     }
                     else if (sElement != "")//ignore empty element strings since they won't work anyway
-                    {
                         SetElementAlpha(sElement, fAlpha);
-                    }
                     SaveAlphaSettings();
                     ElementMenu(kAv, iAuth);
                 }
@@ -486,13 +414,13 @@ default
                     float fAlpha;
                     if (iIndex == -1) fAlpha = 1.0; // assuming visible
                     else fAlpha = (float)llList2String(g_lAlphaSettings, iIndex + 1);
-                    Notify(kAv, "You selected \"" + sElement+"\". Toggling its transparency.", FALSE);
+//                    Notify(kAv, "You selected \"" + sElement+"\". Toggling its transparency.", FALSE);
+                    llMessageLinked(LINK_SET, NOTIFY, "You selected \"" + sElement+"\". Toggling its transparency. |FALSE",kAv);
                     SetElementAlpha(sElement, (float)(!llCeil(fAlpha)));
                 }
                 else
-                {
-                    Notify(kAv, "You selected a prim which is not hideable. You can try again.", FALSE);
-                }
+//                    Notify(kAv, "You selected a prim which is not hideable. You can try again.", FALSE);
+                    llMessageLinked(LINK_SET, NOTIFY, "You selected a prim which is not hideable. You can try again. |FALSE",kAv);
                 ElementMenu(kAv, iAuth);
             }
         }

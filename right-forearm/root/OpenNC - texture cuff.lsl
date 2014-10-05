@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////////
 // ------------------------------------------------------------------------------ //
 //                            OpenNC - texture cuff                               //
-//                            version 3.961                                       //
+//                            version 3.980                                       //
 // ------------------------------------------------------------------------------ //
 // Licensed under the GPLv2 with additional requirements specific to Second Life® //
 // and other virtual metaverse environments.                                      //
@@ -34,6 +34,8 @@ string g_sAppLockToken = "Appearance_Lock";
 //MESSAGE MAP
 integer COMMAND_OWNER = 500;
 integer COMMAND_WEARER = 503;
+integer NOTIFY = 550;
+integer SENDCMD= 551;
 integer LM_SETTING_SAVE = 2000;//scripts send messages on this channel to have settings saved to httpdb
 integer LM_SETTING_REQUEST = 2001;//when startup, scripts send requests for settings on this channel
 integer LM_SETTING_RESPONSE = 2002;//the httpdb script will send responses on this channel
@@ -47,52 +49,37 @@ integer TOUCH_RESPONSE = -9502;
 string UPMENU = "BACK";
 key g_kWearer;
 string g_sScript;
-// ------ start of extra Cuff bits------
-integer g_nCmdChannel    = -190890;
-integer g_nCmdChannelOffset = 0xCC0CC;       // offset to be used to make sure we do not interfere with other items using the same technique for
+
+//integer g_nCmdChannel    = -190890;
+//integer g_nCmdChannelOffset = 0xCC0CC;       // offset to be used to make sure we do not interfere with other items using the same technique for
 string    g_szModToken    = "rlac"; // valid token for this module
 string g_szTextureChangeCmd="TextureChanged"; // Comand for Cuffs to change the texture
 
+string SEPARATOR = "~";// texture name element divider, put constant in so can be changed throughout the script with one change.
+// set FALSE to enable basic AND special texture names for all elements, TRUE for ONLY special textures per element.
+// TRUE will still use basic textures for a given element WHEN that element has no special textures named in the collar.
+integer EXCLUSIVE = TRUE;
+/*
 integer nGetOwnerChannel(integer nOffset)
 {
     integer chan = (integer)("0x"+llGetSubString((string)llGetOwner(),3,8)) + g_nCmdChannelOffset;
     if (chan>0)
-    {
         chan=chan*(-1);
-    }
     if (chan > -10000)
-    {
-        chan -= 30000;
-    }
+        chan -= 30002;
     return chan;
 }
-//===============================================================================
-//= parameters   :    string    szSendTo    prefix of receiving modul
-//=                    string    szCmd       message string to send
-//=                    key        keyID        key of the AV or object
-//=
-//= retun        :    none
-//=
-//= description  :    Sends the command with the prefix and the UUID
-//=                    on the command channel
-//=
-//===============================================================================
+*/
 SendCmd( string szSendTo, string szCmd, key keyID )
 {
-    llRegionSay(g_nCmdChannel + 1, g_szModToken + "|" + szSendTo + "|" + szCmd + "|" + (string)keyID);
+//    llRegionSayTo(g_kWearer,g_nCmdChannel + 1, g_szModToken + "|" + szSendTo + "|" + szCmd + "|" + (string)keyID);
+    llMessageLinked( LINK_SET, SENDCMD, g_szModToken + "|" + szSendTo + "|" + szCmd + "|" + (string)keyID, keyID);
 }
 
 string szStripSpaces (string szStr)
 {
     return llDumpList2String(llParseString2List(szStr, [" "], []), "");
 }
-//------end of extra cuff bits-----
-
-// texture name element divider, put constant in so can be changed throughout the script with one change.
-string SEPARATOR = "~";
-// set FALSE to enable basic AND special texture names for all elements, TRUE for ONLY special textures per element.
-// TRUE will still use basic textures for a given element WHEN that element has no special textures named in the collar.
-integer EXCLUSIVE = TRUE;
 
 string GetDefaultTexture(string ele)
 {
@@ -122,9 +109,7 @@ string GetLongName(string ele, string sTex) // find the full texture name given 
     {
         test = llList2String(work, l);
         if (~llSubStringIndex(test, sTex))
-        {
             if (!GetElementHasTexs(ele) || ~llSubStringIndex(test, llToLower(ele) + SEPARATOR)) return test;
-        }
     }
     return ""; // this should only happen if chat command is used with invalid texture
 }
@@ -152,7 +137,8 @@ integer GetElementHasTexs(string ele) // check if textures exist with labels for
     integer l = 0;
     for (; l < llGetInventoryNumber(INVENTORY_TEXTURE); l++)
     {
-        if (~llSubStringIndex(llGetInventoryName(INVENTORY_TEXTURE, l), ele)) return TRUE;
+        if (~llSubStringIndex(llGetInventoryName(INVENTORY_TEXTURE, l), ele))
+            return TRUE;
     }
     return FALSE;
 }
@@ -182,23 +168,19 @@ list BuildTexButtons()
     }
     return out;
 }
-
+/*
 Notify(key kID, string sMsg, integer iAlsoNotifyWearer)
 {
     if (kID == g_kWearer)
-    {
         llOwnerSay(sMsg);
-    }
     else
     {
         llInstantMessage(kID, sMsg);
         if (iAlsoNotifyWearer)
-        {
             llOwnerSay(sMsg);
-        }
     }
 }
-
+*/
 key Dialog(key kRCPT, string sPrompt, list lChoices, list lUtilityButtons, integer iPage, integer iAuth)
 {
     key kID = llGenerateKey();
@@ -236,13 +218,9 @@ string ElementType(integer iLinkNum)
     //prim desc will be elementtype~notexture(maybe)
     list lParams = llParseString2List(sDesc, ["~"], []);
     if ((~(integer)llListFindList(lParams, ["notexture"])) || sDesc == "" || sDesc == " " || sDesc == "(No Description)")
-    {
         return "notexture";
-    }
     else
-    {
         return llList2String(llParseString2List(sDesc, ["~"], []), 0);
-    }
 }
 // -- Deprecated "LoadTextureSettings" --
 integer StartsWith(string sHayStack, string sNeedle) // http://wiki.secondlife.com/wiki/llSubStringIndex
@@ -266,6 +244,7 @@ SetElementTexture(string sElement, string sTex)
     //save to settings
     llMessageLinked(LINK_SET, LM_SETTING_SAVE, g_sScript + sElement + "=" + sTex, "");
 }
+
 string DumpSettings(string sep)
 {
     string out;
@@ -291,21 +270,16 @@ default
         {
             string sElement = ElementType(n);
             if (!(~llListFindList(g_lElements, [sElement])) && sElement != "notexture")
-            {
                 g_lElements += [sElement];
-            }
         }
         // we need to unify the initialization of the menu system for 3.5
         llSleep(1.0);
         llMessageLinked(LINK_SET, MENUNAME_RESPONSE, g_sParentMenu + "|" + g_sSubMenu, "");
-        //-------------extra cuffs-------------
-        g_nCmdChannel = nGetOwnerChannel(g_nCmdChannelOffset); // get the owner defined channel
-        //---------end extra cuffs-------------
+//        g_nCmdChannel = nGetOwnerChannel(g_nCmdChannelOffset); // get the owner defined channel
     }
 
     link_message(integer iSender, integer iNum, string sStr, key kID)
     {
-        //-------------extra cuffs-------------
         string sMsg2;
         string sMsg3;
         list lParams1 = llParseString2List(sStr, ["_"], []);
@@ -318,7 +292,6 @@ default
             SendCmd("*",g_szTextureChangeCmd + "=" + llList2String(lParams2, 0) + "=" + llList2String(lParams2, 1),"");//send texture change to other cuffs
             SetElementTexture(llList2String(lParams2,0),szStripSpaces(llList2String(lParams2,1)));//send the texture change to this cuff
         }
-        //---------end extra cuffs-------------
         //owner, secowner, group, and wearer may currently change colors
         if (iNum >= COMMAND_OWNER && iNum <= COMMAND_WEARER)
         {
@@ -326,13 +299,15 @@ default
             {
                 if (kID!=g_kWearer && iNum!=COMMAND_OWNER)
                 {
-                    Notify(kID, "You are not allowed to change the textures.", FALSE);
+//                    Notify(kID, "You are not allowed to change the textures.", FALSE);
+                    llMessageLinked(LINK_SET, NOTIFY, "You are not allowed to change the textures. |FALSE",kID);
                     if (!llSubStringIndex(sStr, "menu "))
                         llMessageLinked(LINK_SET, iNum, "menu " + g_sParentMenu, kID);
                 }
                 else if (g_iAppLock)
                 {
-                    Notify(kID, "The appearance of the " + CTYPE + " is locked. You cannot access this menu now!", FALSE);
+//                    Notify(kID, "The appearance of the " + CTYPE + " is locked. You cannot access this menu now!", FALSE);
+                    llMessageLinked(LINK_SET, NOTIFY, "The appearance of the " + CTYPE + " is locked. You cannot access this menu now! |FALSE",kID);
                     if (!llSubStringIndex(sStr, "menu "))
                         llMessageLinked(LINK_SET, iNum, "menu " + g_sParentMenu, kID);
                 }
@@ -355,14 +330,12 @@ default
                     else g_iAppLock = TRUE;
                 }
             }
-            else if (sStr == "reset" && (iNum == COMMAND_OWNER || kID == g_kWearer))
-            {
-                //clear saved settings
+            else if (sStr == "reset" && (iNum == COMMAND_OWNER || kID == g_kWearer)) //clear saved settings
                 llResetScript();
-            }
             else if (kID != g_kWearer && iNum != COMMAND_OWNER) return;
             {
-                if (sStr == "settings") Notify(kID, "Texture Settings: " + DumpSettings("\n"), FALSE);
+                if (sStr == "settings")// Notify(kID, "Texture Settings: " + DumpSettings("\n"), FALSE);
+                    llMessageLinked(LINK_SET, NOTIFY, "Texture Settings: " + DumpSettings("\n") + " |FALSE",kID);
                 else
                 {
                     list lParams = llParseString2List(sStr, [" "], []);
@@ -370,7 +343,8 @@ default
                     {
                         if (g_iAppLock)
                         {
-                            Notify(kID, "The appearance of the " + CTYPE + " is locked. You cannot change textures now!", FALSE);
+//                            Notify(kID, "The appearance of the " + CTYPE + " is locked. You cannot change textures now!", FALSE);
+                            llMessageLinked(LINK_SET, NOTIFY, "The appearance of the " + CTYPE + " is locked. You cannot access this menu now! |FALSE",kID);
                             return;
                         }
                         string sElement = llList2String(lParams, 1);
@@ -389,7 +363,8 @@ default
                                 ok=TRUE;
                             }
                         }
-                       if(!ok) Notify(kID, "The element " + sElement + " wasn't recognized, please check your command and try again.",FALSE);
+                       if(!ok)// Notify(kID, "The element " + sElement + " wasn't recognized, please check your command and try again.",FALSE);
+                           llMessageLinked(LINK_SET, NOTIFY, "The element " + sElement + " wasn't recognized, please check your command and try again. |FALSE",kID);
                         else
                         {
                             ok=FALSE;
@@ -410,7 +385,8 @@ default
                                 }
                             }
                             if(ok) SetElementTexture(sElement, sTex);
-                            else Notify(kID, "The texture " + sTex + " wasn't found in "+CTYPE+" inventory, please check your command and try again.",FALSE);
+                            else// Notify(kID, "The texture " + sTex + " wasn't found in "+CTYPE+" inventory, please check your command and try again.",FALSE);
+                                llMessageLinked(LINK_SET, NOTIFY, "The texture " + sTex + " wasn't found in "+CTYPE+" inventory, please check your command and try again.|FALSE",kID);
                         }
                     }
                 }
@@ -433,9 +409,7 @@ default
             else if (sToken == "Global_CType") CTYPE = sValue;
         }
         else if (iNum == MENUNAME_REQUEST && sStr == g_sParentMenu)
-        {
             llMessageLinked(LINK_SET, MENUNAME_RESPONSE, g_sParentMenu + "|" + g_sSubMenu, "");
-        }
         else if (iNum == DIALOG_RESPONSE)
         {
             if (llListFindList([g_kElementID, g_ktextureID], [kID]) != -1)
@@ -445,16 +419,14 @@ default
                 string sMessage = llList2String(lMenuParams, 1);
                 integer iPage = (integer)llList2String(lMenuParams, 2);
                 integer iAuth = (integer)llList2String(lMenuParams, 3);
-
                 if (kID == g_kElementID)
                 {//they just chose an element, now choose a texture
                     if (sMessage == UPMENU)
-                    {
                         llMessageLinked(LINK_SET, iAuth, "menu "+g_sParentMenu, kAv);
-                    }
                     else if (sMessage == "*Touch*")
                     {
-                        Notify(kAv, "Please touch the part of the " + CTYPE + " you want to retexture. You can press ctr+alt+T to see invisible parts.", FALSE);
+//                        Notify(kAv, "Please touch the part of the " + CTYPE + " you want to retexture. You can press ctr+alt+T to see invisible parts.", FALSE);
+                        llMessageLinked(LINK_SET, NOTIFY, "Please touch the part of the " + CTYPE + " you want to retexture. You can press ctr+alt+T to see invisible parts.|FALSE",kAv);
                         g_kTouchID = TouchRequest(kAv, TRUE, FALSE, iAuth);
                     }
                     else
@@ -475,7 +447,6 @@ default
                         string sTex = GetLongName(s_CurrentElement, sMessage);
                         if (sMessage == "Default") sTex = GetDefaultTexture(s_CurrentElement);
                         SetElementTexture(s_CurrentElement, sTex);
-                        //-------------extra cuffs-------------
                         //send to other cuffs
                         if(llGetInventoryType(sTex) == INVENTORY_TEXTURE)
                         {    //Texture exist in Prim?  Error evasion.  It may be surplus.
@@ -483,7 +454,6 @@ default
                             if(k != NULL_KEY) sTex = (string)k; //Full permission is not NULL_KEY.  If it is not Full permission, then put texture in each Slave-cuffs.
                         }
                         SendCmd("*",g_szTextureChangeCmd+"="+s_CurrentElement+"="+sTex,"");
-                        //---------end extra cuffs-------------
                         TextureMenu(kAv, iPage, iAuth);
                     }
                 }
@@ -497,21 +467,23 @@ default
                 key kAv = (key)llList2String(lParams, 0);
                 integer iAuth = (integer)llList2String(lParams, 1);
                 integer iLinkNumber = (integer)llList2String(lParams, 3);
-                
                 string sElement = ElementType(iLinkNumber);
                 if (sElement != "notexture")
                 {
                     TextureMenu(kAv, 0, iAuth);
-                    Notify(kAv, "You selected \""+sElement+"\".", FALSE);
+//                    Notify(kAv, "You selected \""+sElement+"\".", FALSE);
+                    llMessageLinked(LINK_SET, NOTIFY, "You selected \""+sElement+"\".|FALSE",kAv);
                 }
                 else
                 {
-                    Notify(kAv, "You selected a prim which is not texturable. You can try again.", FALSE);
+//                    Notify(kAv, "You selected a prim which is not texturable. You can try again.", FALSE);
+                    llMessageLinked(LINK_SET, NOTIFY, "You selected a prim which is not texturable. You can try again.|FALSE",kAv);
                     ElementMenu(kAv, iAuth);
                 }
             }
         }
     }
+
     on_rez(integer iParam)
     {
         llResetScript();

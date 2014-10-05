@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////////
 // ------------------------------------------------------------------------------ //
 //                            OpenNC - menu cuff                                  //
-//                            version 3.965                                       //
+//                            version 3.980                                       //
 // ------------------------------------------------------------------------------ //
 // Licensed under the GPLv2 with additional requirements specific to Second Life® //
 // and other virtual metaverse environments.                                      //
@@ -17,13 +17,11 @@
 //on menu request, give dialog, with alphabetized list of submenus
 //on listen, send submenu link message
 
-//-------cuff change---------------
 list g_lMenuNames = ["Main", "Help/About"];
-//---end cuff change---------------
 
 list g_lMenus;//exists in parallel to g_lMenuNames, each entry containing a pipe-delimited string with the items for the corresponding menu
 list g_lMenuPrompts = [
-"\n\nWelcome to the Main Menu\nOpenNC Version 3.968",
+"\n\nWelcome to the Main Menu\nOpenNC Version 3.980",
 "\n\nFrom here you can\nFix Menu's,\nGet a cuffs Help notecard,\nGet a link in local chat to join the support group.",
 "\n\nThis menu grants access to every installed AddOn.\n"
 ];
@@ -122,14 +120,10 @@ resizeObject(float scale)
             new_pos    = scale * llList2Vector(link_positions, link_idx-1);
  
             if (link_idx == 1)
-            {
                 //because we don't really want to move the root prim as it moves the whole object
                 llSetLinkPrimitiveParamsFast(link_idx, [PRIM_SIZE, new_size]);
-            }
             else
-            {
                 llSetLinkPrimitiveParamsFast(link_idx, [PRIM_SIZE, new_size, PRIM_POSITION, new_pos]);
-            }
         }
     }
 }
@@ -139,13 +133,9 @@ integer getPersonalChannel(key owner, integer nOffset)
 {
     integer chan = (integer)("0x"+llGetSubString((string)owner,2,7)) + nOffset;
     if (chan>0)
-    {
         chan=chan*(-1);
-    }
     if (chan > -10000)
-    {
         chan -= 30000;
-    }
     return chan;
 }
 
@@ -166,20 +156,14 @@ Menu(string sName, key kID, integer iAuth)
         string sPrompt = llList2String(g_lMenuPrompts, iMenuIndex);
         list lUtility = [];
         if (sName != "Main")
-        {
             lUtility = [UPMENU];
-        }
         else lUtility = ["Collar Menu"];
         key kMenuID = Dialog(kID, sPrompt, lItems, lUtility, 0, iAuth);
         integer iIndex = llListFindList(g_lMenuIDs, [kID]);
-        if (~iIndex)
-        { //we've alread given a menu to this user.  overwrite their entry
+        if (~iIndex) //we've alread given a menu to this user.  overwrite their entry
             g_lMenuIDs = llListReplaceList(g_lMenuIDs, [kID, kMenuID, sName], iIndex, iIndex + g_iMenuStride - 1);
-        }
-        else
-        { //we've not already given this user a menu. append to list
+        else //we've not already given this user a menu. append to list
             g_lMenuIDs += [kID, kMenuID, sName];
-        }
     }
 }
 
@@ -201,7 +185,7 @@ MenuInit()
         { //make each submenu appear in Main
             HandleMenuResponse("Main|" + sName);
             //request children of each submenu
-            llMessageLinked(LINK_SET, MENUNAME_REQUEST, sName, "");            
+            llMessageLinked(LINK_SET, MENUNAME_REQUEST, sName, "");
         }
     }
     //give the help menu GIVECARD and REFRESH_MENU buttons    
@@ -245,19 +229,20 @@ HandleMenuRemove(string sStr)
         list lGuts = llParseString2List(llList2String(g_lMenus, iMenuIndex), ["|"], []);
         integer gutiIndex = llListFindList(lGuts, [child]);
         //only remove if it's there
-        if (gutiIndex != -1)        
+        if (gutiIndex != -1)
         {
             lGuts = llDeleteSubList(lGuts, gutiIndex, gutiIndex);
-            g_lMenus = llListReplaceList(g_lMenus, [llDumpList2String(lGuts, "|")], iMenuIndex, iMenuIndex);                    
-        }        
+            g_lMenus = llListReplaceList(g_lMenus, [llDumpList2String(lGuts, "|")], iMenuIndex, iMenuIndex);
+        }
     } 
 }
 
 integer UserCommand(integer iNum, string sStr, key kID)
 {
-    if (iNum == COMMAND_NOAUTH) 
+    if (iNum == COMMAND_NOAUTH)
     {
-        llMessageLinked(LINK_SET, iNum, sStr, kID); return TRUE;
+        llMessageLinked(LINK_SET, iNum, sStr, kID);
+        return TRUE;
     }
     if (iNum == COMMAND_EVERYONE) return TRUE;  // No command for people with no privilege in this plugin.
     else if (iNum > COMMAND_EVERYONE || iNum < COMMAND_OWNER) return FALSE; // sanity check
@@ -270,7 +255,7 @@ integer UserCommand(integer iNum, string sStr, key kID)
         if (llListFindList(g_lMenuNames, [sSubmenu]) != -1);
         Menu(sSubmenu, kID, iNum);
     }
-    else if (sStr == "chelp") llGiveInventory(kID, HELPCARD);                
+    else if (sStr == "chelp") llGiveInventory(kID, HELPCARD);
     else if (sStr == "cabout") Menu("Help/About", kID, iNum);
     else if (sCmd == "refreshmenu1")
     {
@@ -288,11 +273,11 @@ default
         llSleep(1.0);//delay sending this message until we're fairly sure that other scripts have reset too, just in case
         g_iScriptCount = llGetInventoryNumber(INVENTORY_SCRIPT);
         MenuInit();
-        if (scanLinkset()) { // llOwnerSay("resizer script ready");
+        if (scanLinkset())
+        { // llOwnerSay("resizer script ready");
         }
-        
     }
-    //-------extra cuff---------------
+    
     touch_start(integer num)//so we can touch the cuff
     {
         key id = llDetectedKey(0);
@@ -301,67 +286,48 @@ default
             llSetScriptState("OpenNC - update",TRUE);
             return;
         }
-        
         if (llDetectedKey(0) == llGetOwner())// if we are wearer then allow to resize
-        {
             llDialog(llGetOwner(),"Select if you want to Resize this item or the main Cuff Menu ",["Resizer","Cuff Menu"],menuChan);
-        }
-        else { llMessageLinked(LINK_THIS, COMMAND_NOAUTH, "cmenu", llDetectedKey(0));}//else just give cuff menu
+        else
+            llMessageLinked(LINK_THIS, COMMAND_NOAUTH, "cmenu", llDetectedKey(0));//else just give cuff menu
     }
-    //-------end extra cuff---------------
     
     link_message(integer iSender, integer iNum, string sStr, key kID)
     {
         if (iNum == COMMAND_NOAUTH) return;
         if (UserCommand(iNum, sStr, kID)) return;
-        else if (iNum == MENUNAME_RESPONSE)
-        { //sStr will be in form of "parent|menuname"
-            //ignore unless parent is in our list of menu names
+        else if (iNum == MENUNAME_RESPONSE) //sStr will be in form of "parent|menuname" ignore unless parent is in our list of menu names
             HandleMenuResponse(sStr);
-        }
         else if (iNum == MENUNAME_REMOVE)
-        {
             HandleMenuRemove(sStr);
-        }
         else if (iNum == DIALOG_RESPONSE)
         {
             integer iMenuIndex = llListFindList(g_lMenuIDs, [kID]);
             if (iMenuIndex != -1)
             { //got a menu response meant for us.  pull out values
                 list lMenuParams = llParseString2List(sStr, ["|"], []);
-                key kAv = (key)llList2String(lMenuParams, 0);          
-                string sMessage = llList2String(lMenuParams, 1);                                         
+                key kAv = (key)llList2String(lMenuParams, 0);
+                string sMessage = llList2String(lMenuParams, 1);
                 integer iPage = (integer)llList2String(lMenuParams, 2);
                 integer iAuth = (integer)llList2String(lMenuParams, 3);
                 //remove stride from g_lMenuIDs
                 //we have to subtract from the index because the dialog id comes in the middle of the stride
                 g_lMenuIDs = llDeleteSubList(g_lMenuIDs, iMenuIndex - 1, iMenuIndex - 2 + g_iMenuStride);
-
                 if (sMessage == USER_GROUP)
                 {
                     llInstantMessage(kAv,"\n\nJoin secondlife:///app/group/" + USER_GROUP_ID + "/about " + "for friendly support.\n");
                     Menu("Help/About", kAv, iAuth);
                 }
-                else if (sMessage == REFRESH_MENU)
-                {//send a command telling other plugins to rebuild their menus
+                else if (sMessage == REFRESH_MENU)//send a command telling other plugins to rebuild their menus
                     UserCommand(iAuth, "refreshmenu1", kAv);
-                }
-                else if (sMessage == helpcard)
-                {//give out the help card
+                else if (sMessage == helpcard)//give out the help card
                     llGiveInventory(kAv, HELPCARD);
-                }
                 else if (sMessage == UPMENU)
-                {
                     Menu("Main", kAv, iAuth);
-                }
                 else if (sMessage == "Collar Menu")
-                {
                     llRegionSayTo(wearer,getPersonalChannel(wearer,1111), (string)wearer + ":menu|"+(string)kAv);
-                }
                 else
-                {
                     llMessageLinked(LINK_SET, iAuth, "menu "+sMessage, kAv);
-                }
             }
         }
         else if (iNum == DIALOG_TIMEOUT)
@@ -382,10 +348,8 @@ default
     {
         if (iChange & CHANGED_INVENTORY)
         {
-            if (llGetInventoryNumber(INVENTORY_SCRIPT) != g_iScriptCount)
-            {//a script has been added or removed.  Reset to rebuild menu
+            if (llGetInventoryNumber(INVENTORY_SCRIPT) != g_iScriptCount)//a script has been added or removed.  Reset to rebuild menu
                 llResetScript();
-            }
         }
     }
     listen(integer nChannel, string szName, key keyID, string szMsg)
@@ -393,40 +357,24 @@ default
         if (keyID == llGetOwner())
         {
             if (szMsg == "Cuff Menu")
-            {
                 llMessageLinked(LINK_THIS, COMMAND_NOAUTH, "cmenu", keyID);
-            }
             else if (szMsg == "Resizer")
-            {
                 makeMenu();
-            }
             else
             {
                 if (szMsg == "RESTORE")
-                {
                     cur_scale = 1.0;
-                }
                 else if (szMsg == "MIN SIZE")
-                {
                     cur_scale = min_scale;
-                }
                 else if (szMsg == "MAX SIZE")
-                {
                     cur_scale = max_scale;
-                }          
                 else
-                {
                     cur_scale += (float)szMsg;
-                }
                 //check that the scale doesn't go beyond the bounds
                 if (cur_scale > max_scale)
-                { 
                     cur_scale = max_scale;
-                }
                 if (cur_scale < min_scale)
-                {
                     cur_scale = min_scale;
-                }
                 resizeObject(cur_scale);
                 makeMenu();
             }

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////////
 // ------------------------------------------------------------------------------ //
 //                            OpenNC - tail cuff                                  //
-//                            version 3.960                                       //
+//                            version 3.980                                       //
 // ------------------------------------------------------------------------------ //
 // Licensed under the GPLv2 with additional requirements specific to Second Life® //
 // and other virtual metaverse environments.                                      //
@@ -11,11 +11,12 @@
 // ------------------------------------------------------------------------------ //
 // Not now supported by OpenCollar at all                                         //
 ////////////////////////////////////////////////////////////////////////////////////
-
 list elements;
 string parentmenu = "Cuff Poses";
 string submenu = "Tail Cuffs";
 string dbtoken = "cuff-tail";
+string CLCMD = "ctail";
+string menupose;
 list buttons;
 integer lastrank = 10000; //in this integer, save the rank of the person who posed the av, according to message map.  10000 means unposed
 key g_keyDialogID;
@@ -24,6 +25,10 @@ key g_keyWearer;
 integer COMMAND_NOAUTH = 0;
 integer COMMAND_OWNER = 500;
 integer COMMAND_WEARER = 503;
+integer SENDCMD= 551;
+integer LM_SETTING_SAVE = 2000;//scripts send messages on this channel to have settings saved to httpdb
+integer LM_SETTING_REQUEST = 2001;//when startup, scripts send requests for settings on this channel
+integer LM_SETTING_RESPONSE = 2002;//the httpdb script will send responses on this channel
 integer MENUNAME_REQUEST = 3000;
 integer MENUNAME_RESPONSE = 3001;
 integer SUBMENU = 3002;
@@ -35,12 +40,7 @@ integer LM_CUFF_CHAINTEXTURE = -551003;   // used as channel for linkedmessages 
 list    g_lstModTokens    = ["rlac","orlac"]; // list of attachment points in this cuff, only need for the main cuff, so i dont want to read that from prims
 string g_szLGChainTexture="";
 string UPMENU = "BACK";
-//===============================================================================
-// AK - Cuff - functions & variables
-//===============================================================================
 string    g_szActAnim        = "";
-integer g_nCmdChannel    = -190890;
-integer g_nCmdChannelOffset = 0xCC0CC;       // offset to be used to make sure we do not interfere with other items using the same technique for
 list    g_lstLocks;
 list    g_lstAnims;
 list    g_lstChains;
@@ -76,90 +76,38 @@ integer LoadLocksParse( key queryid, string data)
         g_lstLocks = ["*Stop*"] + g_lstLocks;
         g_lstAnims = [""] + g_lstAnims;
         g_lstChains = [""] + g_lstChains;
+        llMessageLinked(LINK_THIS, LM_SETTING_REQUEST, dbtoken, "");//lets make sure we get our pose back once notecard is read
         return -1;
     }
     pos_line ++;
     LoadLocksNextLine();
+    
     if (llGetSubString(data,0,0)=="#")
-    {
         return 1;
-    }
     list lock = llParseString2List( data, ["|"], [] );
-    if ( llGetListLength(lock) != 3 ) {
+    if ( llGetListLength(lock) != 3 )
         return 1;
-    }
     g_lstLocks += (list)llList2String(lock,0);
     g_lstAnims += (list)llList2String(lock,1);
     g_lstChains += (list)llList2String(lock,2);
     return 1;
 }
-//===============================================================================
-//= parameters   :  integer nOffset        Offset to make sure we use really a unique channel
-//=
-//= description  : Function which calculates a unique channel number based on the owner key, to reduce lag
-//=
-//= returns      : Channel number to be used
-//===============================================================================
-integer nGetOwnerChannel(integer nOffset)
-{
-    integer chan = (integer)("0x"+llGetSubString((string)llGetOwner(),3,8)) + g_nCmdChannelOffset;
-    if (chan>0)
-    {
-        chan=chan*(-1);
-    }
-    if (chan > -10000)
-    {
-        chan -= 30000;
-    }
-    return chan;
-}
-//===============================================================================
-//= parameters   :    string    szSendTo    prefix of receiving modul
-//=                    string    szCmd       message string to send
-//=                    key        keyID        key of the AV or object
-//=
-//= retun        :    none
-//=
-//= description  :    Sends the command with the prefix and the UUID
-//=                    on the command channel
-//=
-//===============================================================================
+
 SendCmd( string szSendTo, string szCmd, key keyID )
 {
-    llRegionSay(g_nCmdChannel + 1, llList2String(g_lstModTokens,0) + "|" + szSendTo + "|" + szCmd + "|" + (string)keyID);
+    llMessageLinked( LINK_SET, SENDCMD, llList2String(g_lstModTokens,0) + "|" + szSendTo + "|" + szCmd + "|" + (string)keyID, keyID);
 }
-//===============================================================================
-//= parameters   :    key        keyID    key of the calling AV or object
-//=                   string  szChain    chain info string
-//=                 string  szLink  link or unlin the chain
-//=
-//= retun        :
-//=
-//= description  :    devides the chain string into single chain commands
-//=                    delimiter = ~
-//=                    single chains are redirected to Chains
-//=
-//===============================================================================
+
 DoChains( key keyID, string szChain, string szLink )
 {
     list    lstParsed = llParseString2List( szChain, [ "~" ], [] );
     integer nCnt = llGetListLength(lstParsed);
     integer i = 0;
     for (i = 0; i < nCnt; i++ )
-    {
         Chains(keyID, llList2String(lstParsed, i), szLink);
-    }
     lstParsed = [];
 }
-//===============================================================================
-//= parameters   :    string    szMsg    Lock name forced from calling AV
-//=                    key        keyID    key of the calling AV
-//=
-//= retun        :    none
-//=
-//= description  :    Sends the Anim & chain LM with the ID of the calling AV
-//=
-//===============================================================================
+
 Chains(key keyID, string szChain, string szLink)
 {
     list    lstParsed    = llParseString2List( szChain, [ "=" ], [] );
@@ -169,19 +117,12 @@ Chains(key keyID, string szChain, string szLink)
     if (szLink=="link")
     {
         if (g_szLGChainTexture=="")
-        {
             szCmd="link";
-        }
         else
-        {
             szCmd="link "+g_szLGChainTexture;
-        }
     }
     else
-    {
         szCmd="unlink";
-    }
-
     if ( llListFindList(g_lstModTokens,[szTo]) != -1 )
         llMessageLinked( LINK_SET, LM_CUFF_CMD, "chain=" + szChain + "=" + szCmd, llGetKey() );
     else
@@ -193,6 +134,7 @@ CallAnim( string szMsg, key keyID )
     integer nIdx    = -1;
     string    szAnim    = "";
     string    szChain    = "";
+    
     if ( g_szActAnim != "")
         nIdx    = llListFindList(g_lstLocks, [g_szActAnim]);
     if ( nIdx != -1 )
@@ -214,24 +156,20 @@ CallAnim( string szMsg, key keyID )
             szAnim    = llList2String(g_lstAnims, nIdx);
             szChain    = llList2String(g_lstChains, nIdx);
             if (szAnim=="*none*")
-            {
                 llMessageLinked( LINK_SET, LM_CUFF_ANIM, "t:Stop", keyID );
-            }
             else
-            {
                 llMessageLinked( LINK_SET, LM_CUFF_ANIM, "t:"+szAnim, keyID );
-            }
             DoChains(keyID, szChain, "link");
         }
     }
 }
-//===============================================================================
-// END AK - Cuff - Functions
-//===============================================================================
+
 DoMenu(key id)
 {
-    string prompt = "Pick an option.";
+    string prompt = "\nTail poses can be called from the chat line in the following format \n<pre>t:<Button_Name> ie. ort:Kneel";
+    prompt += "\nCurrent pose is - " + menupose;
     list mybuttons = buttons + g_lstLocks;
+    prompt += "\n\nPick an option.";
     g_keyDialogID=Dialog(id, prompt, mybuttons, [UPMENU], 0);
 }
 
@@ -244,38 +182,33 @@ default
 {
     state_entry()
     {
-        g_nCmdChannel = nGetOwnerChannel(g_nCmdChannelOffset); // get the owner defined channel
         g_keyWearer = llGetOwner();
         llSleep(1.0);
         llMessageLinked(LINK_THIS, MENUNAME_REQUEST, submenu, "");
         llMessageLinked(LINK_THIS, MENUNAME_RESPONSE, parentmenu + "|" + submenu, "");
         LoadLocks("Tail Cuffs");
     }
+
     dataserver( key queryid, string data ) 
     {
         if ( LoadLocksParse( queryid, data ) ) return;
     }
-    changed(integer change) 
+
+    changed(integer change)
     {
-        if ( change & CHANGED_INVENTORY ) 
-        {
+        if ( change & CHANGED_INVENTORY )
             LoadLocks("Tail Cuffs");
-        }
     }
 
     link_message(integer sender, integer auth, string str, key id)
     { //owner, secowner, group, and wearer may currently change colors
-        if (str == "reset" && (auth == COMMAND_OWNER || auth == COMMAND_WEARER))
-        { //clear saved settings
+        if (str == "reset" && (auth == COMMAND_OWNER || auth == COMMAND_WEARER))//clear saved settings
             llResetScript();
-        }
         else if (auth==LM_CUFF_CHAINTEXTURE)
         {
             g_szLGChainTexture=str;
             if (g_szActAnim!="")
-            {
                 CallAnim(g_szActAnim,llGetOwner());
-            }
         }
         else if (auth >= COMMAND_OWNER && auth <= COMMAND_WEARER)
         {
@@ -284,14 +217,11 @@ default
                 if (auth <= lastrank)
                 {
                     if (llGetSubString(str, 2,-1)=="Stop")
-                    {
                         lastrank = 10000;
-                    }
                     else
-                    {
                         lastrank=auth;
-                    }
                     CallAnim(llGetSubString(str, 2,-1), id);
+                    llMessageLinked(LINK_THIS, LM_SETTING_SAVE, dbtoken +"="+ llGetSubString(str, 2,-1), "");
                 }
             }
             else if (str == "refreshmenu")
@@ -301,23 +231,15 @@ default
             }
         }
         else if (auth == MENUNAME_REQUEST)
-        {
             llMessageLinked(LINK_THIS, MENUNAME_RESPONSE, parentmenu + "|" + submenu, "");
-        }
         else if (auth == SUBMENU && str == submenu)
-        {
             DoMenu(id);
-        }
         else if ( auth == LM_CUFF_CMD )
         {
             string szToken = llGetSubString(str, 0,1);
-
             if ( str == "reset")
-            {
                 llResetScript();
-            }
         }
-
         else if ( auth == DIALOG_RESPONSE)
         {
             if (id==g_keyDialogID)
@@ -327,41 +249,42 @@ default
                 string message = llList2String(menuparams, 1);
                 integer page = (integer)llList2String(menuparams, 2);
                 integer iAuth = (integer)llList2String(menuparams, 3); // auth level of avatar
-                
                 if (message == UPMENU)
-                {
                     llMessageLinked(LINK_THIS, iAuth, "menu "+ parentmenu, AV);//NEW command structer
-                }
                 else if (~llListFindList(g_lstLocks, [message]))
                 {
                     if (message=="*Stop*")
                     {
                         llMessageLinked(LINK_THIS, COMMAND_NOAUTH, "t:Stop", AV);
+                        menupose = "none";
                     }
                     else
                     {
                         llMessageLinked(LINK_THIS, COMMAND_NOAUTH, "t:"+message, AV);
+                        menupose = message;
                     }
                     DoMenu(AV);
                 }
             }
         }
-        else if (str == "ctail")
+        else if (auth == LM_SETTING_RESPONSE)
         {
-            DoMenu(id);
+            list menuparams = llParseString2List(str, ["="], []);
+            string token = llList2String(menuparams, 0);
+            string pose = llList2String(menuparams, 1);
+            if(token == dbtoken)
+            {
+                CallAnim(pose, g_keyWearer);
+                menupose = pose;
+            }
         }
+        else if (str == CLCMD)
+            DoMenu(id);
     }
 
     on_rez(integer param)
     {
         if (g_keyWearer!=llGetOwner())
-        {
             llResetScript();
-        }
-        else if (g_szActAnim!="")
-        {
-            llSleep(4.0); // Delay the anim rebuild till hopefully everyone is ready
-            CallAnim(g_szActAnim,llGetKey());
-        }
     }
 }

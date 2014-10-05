@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////////
 // ------------------------------------------------------------------------------ //
 //                            OpenNC - listener cuff                              //
-//                            version 3.968                                       //
+//                            version 3.980                                       //
 // ------------------------------------------------------------------------------ //
 // Licensed under the GPLv2 with additional requirements specific to Second Life® //
 // and other virtual metaverse environments.                                      //
@@ -22,10 +22,11 @@ integer COLLAR_CHANNEL;
 integer SYNC = TRUE;
 //MESSAGE MAP
 integer COMMAND_NOAUTH = 0;
+integer COMMAND_COLLAR = 499;
 integer COMMAND_OWNER = 500;
 integer COMMAND_WEARER = 503;
-integer COMMAND_COLLAR = 499;
 integer COMMAND_SAFEWORD = 510;  // new for safeword
+integer NOTIFY = 550;
 integer POPUP_HELP = 1001;
 integer LM_SETTING_SAVE = 2000;//scripts send messages on this channel to have settings saved to settings store
 integer MENUNAME_REQUEST = 3000;
@@ -33,35 +34,28 @@ integer MENUNAME_RESPONSE = 3001;
 string g_sSafeWord = "RED";
 //added for attachment auth
 integer g_iInterfaceChannel = -12587429;
+integer g_nCmdChannel    = -190890;
+integer g_nCmdChannelOffset = 0xCC0CC; // offset to be used to make sure we do not interfere with other items using the same technique for
 integer g_iListenHandleAtt;
 integer ATTACHMENT_REQUEST = 600;
 integer ATTACHMENT_RESPONSE = 601;
 integer ATTACHMENT_FORWARD = 610;
+
 key g_kWearer;
 string g_sSeparator = "|";
 string g_iAuth;
 string UUID;
 string g_sCmd;
 
-//===============================================================================
-//= parameters   :    key owner            key of the person to send the message to
-//=                    integer nOffset        Offset to make sure we use really a unique channel
-//=
-//= description  : Function which calculates a unique channel number based on the owner key, to reduce lag
-//=
-//= returns      : Channel number to be used
-//===============================================================================
+
+
 integer GetOwnerChannel(key kOwner, integer iOffset)
 {
-    integer iChan = (integer)("0x"+llGetSubString((string)kOwner,2,7)) + iOffset;
+    integer iChan = (integer)("0x"+llGetSubString((string)kOwner,2,7)) + iOffset;//normal collar/cuff channel
     if (iChan>0)
-    {
         iChan=iChan*(-1);
-    }
     if (iChan > -10000)
-    {
-        iChan -= 30000;
-    }
+        iChan -= 30000; //so when we add 1 to it we are still on separate channel to collar.
     return iChan;
 }
 
@@ -75,9 +69,7 @@ SetListeners()
     llListenRemove(g_iListener2);
     llListenRemove(g_iListenHandleAtt);
     if(g_iListenChan0 == TRUE)
-    {
         g_iListener1 = llListen(0, "", "", "");
-    }
     g_iInterfaceChannel = (integer)("0x" + llGetSubString(g_kWearer,30,-1));
     if (g_iInterfaceChannel > 0) g_iInterfaceChannel = -g_iInterfaceChannel;
     g_iListenHandleAtt = llListen(g_iInterfaceChannel, "", "", "");
@@ -120,19 +112,18 @@ integer StartsWith(string sHayStack, string sNeedle) // http://wiki.secondlife.c
     return llDeleteSubString(sHayStack, llStringLength(sNeedle), -1) == sNeedle;
 }
 
-Notify(key kID, string sMsg, integer iAlsoNotifyWearer) 
-    {
-    if (kID == g_kWearer) 
-    {
+Notify(key kID, string sMsg, string iAlsoNotifyWearer)
+{
+    if (kID == g_kWearer)
         llOwnerSay(sMsg);
-    } 
-    else 
+    else
     {
-        llInstantMessage(kID,sMsg);
-        if (iAlsoNotifyWearer) 
-        {
+        if (llGetAgentSize(kID) != ZERO_VECTOR)
+            llRegionSayTo(kID,0,sMsg);
+        else
+            llInstantMessage(kID, sMsg);
+        if (iAlsoNotifyWearer == "TRUE")
             llOwnerSay(sMsg);
-        }
     }
 }
 
@@ -167,7 +158,7 @@ default
             }
             else //this should never happen
             {
-                Notify(kID, "Syntax Error! Request must be <uuid>:<command>", FALSE);
+                Notify(kID, "Syntax Error! Request must be <uuid>:<command>", "FALSE");
             }
         }
         else if (sChan == g_iInterfaceChannel)
@@ -224,12 +215,12 @@ default
             string sValue = llToLower(llList2String(lParams, 1));
             if (sStr == "settings")// answer for settings command
             {
-                Notify(kID,"prefix: " + g_sPrefix, FALSE);
-                Notify(kID,"channel: " + (string)g_iListenChan, FALSE);
+                Notify(kID,"prefix: " + g_sPrefix, "FALSE");
+                Notify(kID,"channel: " + (string)g_iListenChan,"FALSE");
             }
             else if (sStr == "ping")
             {// ping from an object, we answer to it on the object channel
-                llRegionSayTo(g_kWearer,GetOwnerChannel(kID,1111),(string)g_kWearer+":pong");
+                llRegionSayTo(g_kWearer,COLLAR_CHANNEL,(string)g_kWearer+":pong");
             }
             else if (iNum == COMMAND_OWNER)//handle changing prefix and channel from owner
             {
@@ -245,7 +236,7 @@ default
                         g_sPrefix = sNewPrefix;
                     }
                     SetListeners();
-                    Notify(kID, "\n" + llKey2Name(g_kWearer) + "'s prefix is '" + g_sPrefix + "'.\nTouch the cuffs or say '" + g_sPrefix + "cmenu' for the main menu.\nSay '" + g_sPrefix + "help' for a list of chat commands.", FALSE);
+                    Notify(kID, "\n" + llKey2Name(g_kWearer) + "'s prefix is '" + g_sPrefix + "'.\nTouch the cuffs or say '" + g_sPrefix + "cmenu' for the main menu.\nSay '" + g_sPrefix + "help' for a list of chat commands.", "FALSE");
                 }
                 else if (sCommand == "channel")
                 {
@@ -254,23 +245,23 @@ default
                     {
                         g_iListenChan =  iNewChan;
                         SetListeners();
-                        Notify(kID, "Now listening on channel " + (string)g_iListenChan + ".", FALSE);
+                        Notify(kID, "Now listening on channel " + (string)g_iListenChan + ".", "FALSE");
                     }
                     else if (iNewChan == 0)
                     {
                         g_iListenChan0 = TRUE;
                         SetListeners();
-                        Notify(kID, "You enabled the public channel listener.\nTo disable it use -1 as channel command.", FALSE);
+                        Notify(kID, "You enabled the public channel listener.\nTo disable it use -1 as channel command.", "FALSE");
                     }
                     else if (iNewChan == -1)
                     {
                         g_iListenChan0 = FALSE;
                         SetListeners();
-                        Notify(kID, "You disabled the public channel listener.\nTo enable it use 0 as channel command, remember you have to do this on your channel /" +(string)g_iListenChan, FALSE);
+                        Notify(kID, "You disabled the public channel listener.\nTo enable it use 0 as channel command, remember you have to do this on your channel /" +(string)g_iListenChan, "FALSE");
                     }
                     else
                     {  //they left the param blank
-                        Notify(kID, "Error: 'channel' must be given a number.", FALSE);
+                        Notify(kID, "Error: 'channel' must be given a number.", "FALSE");
                     }
                 }
             }
@@ -303,12 +294,19 @@ default
                 }
             }
         }
-
+        else if (iNum == NOTIFY)
+        {
+            list lParams = llParseString2List(sStr, ["|"], []);
+            integer i = llGetListLength(lParams);
+            string msg1 = llList2String(lParams, 0);
+            string msg2 = llList2String(lParams, 1);
+            Notify(kID, msg1, msg2);
+        }
         else if (iNum == POPUP_HELP)
         { //replace _PREFIX_ with prefix, and _CHANNEL_ with (string) channel
             sStr = StringReplace(sStr, "_PREFIX_", g_sPrefix);
             sStr = StringReplace(sStr, "_CHANNEL_", (string)g_iListenChan);
-            Notify(kID, sStr, FALSE);
+            Notify(kID, sStr, "FALSE");
         }
         else if (iNum == ATTACHMENT_RESPONSE)
         {

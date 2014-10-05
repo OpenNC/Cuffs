@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////////
 // ------------------------------------------------------------------------------ //
 //                            OpenNC - appearance cuff                            //
-//                                 version 3.960                                  //
+//                                 version 3.980                                  //
 // ------------------------------------------------------------------------------ //
 // Licensed under the GPLv2 with additional requirements specific to Second Life® //
 // and other virtual metaverse environments.  ->  www.opencollar.at/license.html  //
@@ -57,7 +57,10 @@ key g_keyChainDialogID;
 integer COMMAND_NOAUTH = 0;
 integer COMMAND_OWNER = 500;
 integer COMMAND_WEARER = 503;
+integer NOTIFY = 550;
+integer SENDCMD= 551;
 integer LM_SETTING_SAVE = 2000;//scripts send messages on this channel to have settings saved to httpdb
+integer LM_SETTING_REQUEST = 2001;//when startup, scripts send requests for settings on this channel
 integer LM_SETTING_RESPONSE = 2002;//the httpdb script will send responses on this channel
 integer LM_SETTING_DELETE = 2003;//delete token from DB
 integer MENUNAME_REQUEST = 3000;
@@ -77,52 +80,39 @@ key Dialog(key kRCPT, string sPrompt, list lChoices, list lUtilityButtons, integ
     + llDumpList2String(lChoices, "`") + "|" + llDumpList2String(lUtilityButtons, "`") + "|" + (string)iAuth, kID);
     return kID;
 } 
-
+/*
 integer GetOwnerChannel(key kOwner, integer iOffset)
 {
     integer iChan = (integer)("0x"+llGetSubString((string)kOwner,2,7)) + iOffset;
     if (iChan>0)
-    {
         iChan=iChan*(-1);
-    }
     if (iChan > -10000)
-    {
-        iChan -= 30000;
-    }
+        iChan -= 30002; //so when we add 1 to it we are still on separate channel to collar.
     return iChan;
 }
+*/
+/*
 Notify(key kID, string sMsg, integer iAlsoNotifyWearer)
 {
     if (kID == g_kWearer)
-    {
         llOwnerSay(sMsg);
-    }
     else if (llGetAgentSize(kID) != ZERO_VECTOR)
     {
         llInstantMessage(kID,sMsg);
         if (iAlsoNotifyWearer)
-        {
             llOwnerSay(sMsg);
-        }
     }
     else // remote request
-    {
         llRegionSayTo(kID, GetOwnerChannel(g_kWearer, 1111), sMsg);
-    }
 }
-
-
+*/
 SendDefChainCommand()
 {
     string s;
     if ((ChainCurrent>=0) && (ChainCurrent<llGetListLength(ChainMenuButtons)))
-    {
         s=llList2String(ChainMenuCommands,ChainCurrent);
-    }
     else
-    {
         s="";
-    }
     llMessageLinked(LINK_SET,LM_CUFF_CHAINTEXTURE,s,"");
 }
 
@@ -130,13 +120,9 @@ ChainMenu(key id, integer iAuth)
 {
     string prompt = "Choose the standard chains for the collar.\nUse 'Resend' to resend the chain standards if they got out of sync (due to lag or asyncronus attaching). \nCurrent Chain: ";
     if (ChainCurrent==-1)
-    {
         prompt+="Default from cuff";
-    }
     else if ((ChainCurrent>=0) && (ChainCurrent<llGetListLength(ChainMenuButtons)))
-    {
         prompt+=llList2String(ChainMenuButtons,ChainCurrent);
-    }
     else // THis should hopefully not happen
     {
         prompt+="Undefined, please choose a new standard texture!";
@@ -144,7 +130,7 @@ ChainMenu(key id, integer iAuth)
     }
     list mybuttons = ChainMenuButtons+["Resend"];
     g_keyChainDialogID = Dialog(id, prompt, mybuttons, [UPMENU], 0, iAuth);
-
+    llMessageLinked(LINK_THIS, LM_SETTING_SAVE, chaintoken + "=" + (string)ChainCurrent, "");
 }
 
 string GetScriptID()
@@ -172,7 +158,6 @@ DoMenu(key kAv, integer iAuth)
     else
     {
         sPrompt = "\n\nChange looks, adjustment and size.\n\nAdjustments are based on the neck attachment spot.";
-    
         lMyButtons = [UNTICKED + APPLOCK];
         lMyButtons += llListSort(g_lButtons, 1, TRUE);
     }
@@ -180,13 +165,9 @@ DoMenu(key kAv, integer iAuth)
     integer iMenuIndex = llListFindList(g_lMenuIDs, [kAv]);
     list lAddMe = [kAv, kMenuID, g_sSubMenu];
     if (iMenuIndex == -1)
-    {
         g_lMenuIDs += lAddMe;
-    }
     else
-    {
         g_lMenuIDs = llListReplaceList(g_lMenuIDs, lAddMe, iMenuIndex, iMenuIndex + g_iMenuStride - 1);    
-    }    
 }
 
 default
@@ -194,6 +175,8 @@ default
     state_entry()
     {
         g_kWearer = llGetOwner();
+        llSleep (2.0);
+        llMessageLinked(LINK_THIS, LM_SETTING_REQUEST, chaintoken , "");
     }
     
     on_rez(integer iParam)
@@ -204,9 +187,7 @@ default
     link_message(integer iSender, integer iNum, string sStr, key kID)
     {
         if (iNum == MENUNAME_REQUEST && sStr == g_sParentMenu)
-        {
             llMessageLinked(LINK_SET, MENUNAME_RESPONSE, g_sParentMenu + "|" + g_sSubMenu, "");
-        }
         else if (iNum == MENUNAME_RESPONSE)
         {
             list lParts = llParseString2List(sStr, ["|"], []);
@@ -214,9 +195,7 @@ default
             {//someone wants to stick something in our menu
                 string button = llList2String(lParts, 1);
                 if (llListFindList(g_lButtons, [button]) == -1)
-                {
                     g_lButtons = llListSort(g_lButtons + [button], 1, TRUE);
-                }
             }
         }
         else if (iNum >= COMMAND_OWNER && iNum <= COMMAND_WEARER)
@@ -229,7 +208,8 @@ default
                 //give this plugin's menu to id
                 if (kID!=g_kWearer && iNum!=COMMAND_OWNER)
                 {
-                    Notify(kID,"You are not allowed to change the cuff's appearance.", FALSE);
+//                    Notify(kID,"You are not allowed to change the cuff's appearance.", FALSE);
+                    llMessageLinked(LINK_SET, NOTIFY, "You are not allowed to change the cuff's appearance. |FALSE",kID);
                     llMessageLinked(LINK_SET, iNum, "menu " + g_sParentMenu, kID);
                 }
                 else DoMenu(kID, iNum);
@@ -242,9 +222,8 @@ default
             else if (sStr == "appearance")
             {
                 if (kID!=g_kWearer && iNum!=COMMAND_OWNER)
-                {
-                    Notify(kID,"You are not allowed to change the cuff's appearance.", FALSE);
-                }
+//                    Notify(kID,"You are not allowed to change the cuff's appearance.", FALSE);
+                    llMessageLinked(LINK_SET, NOTIFY, "You are not allowed to change the cuff's appearance. |FALSE",kID);
                 else DoMenu(kID, iNum);
             }
             else if (sCommand == "lockappearance")
@@ -255,12 +234,11 @@ default
                     if(g_iAppLock) llMessageLinked(LINK_SET, LM_SETTING_SAVE, g_sAppLockToken + "=1", "");
                     else llMessageLinked(LINK_SET, LM_SETTING_DELETE, g_sAppLockToken, "");
                 }
-                else Notify(kID,"Only owners can use this option.", FALSE);
+                else //Notify(kID,"Only owners can use this option.", FALSE);
+                llMessageLinked(LINK_SET, NOTIFY, "Only owners can use this option. |FALSE",kID);
             }
             else if ((sStr == "menu Chains")||(sStr == "chains"))
-            {
                 ChainMenu(kID, iNum);
-            }
             else if (sStr == "Resync Cuffs")
             {
                 SendDefChainCommand();
@@ -274,8 +252,11 @@ default
             string sValue = llList2String(lParams, 1);
 
             if (sToken == g_sAppLockToken)
-            {
                 g_iAppLock = (integer)sValue;
+            else if (sToken == chaintoken)
+            {
+                ChainCurrent = (integer)sValue;
+                SendDefChainCommand();
             }
             
         }
@@ -289,33 +270,28 @@ default
             if (iMenuIndex != -1)
             {//got a menu response meant for us.  pull out values
                 list lMenuParams = llParseString2List(sStr, ["|"], []);
-                key kAv = (key)llList2String(lMenuParams, 0);          
-                string sMessage = llList2String(lMenuParams, 1);                               
+                key kAv = (key)llList2String(lMenuParams, 0);
+                string sMessage = llList2String(lMenuParams, 1);
                 integer iPage = (integer)llList2String(lMenuParams, 2);
                 integer iAuth = (integer)llList2String(lMenuParams, 3);
                 string sMenuType = llList2String(g_lMenuIDs, iMenuIndex + 1);
                 //remove stride from g_lMenuIDs
                 //we have to subtract from the index because the dialog id comes in the middle of the stride
-                g_lMenuIDs = llDeleteSubList(g_lMenuIDs, iMenuIndex - 1, iMenuIndex - 2 + g_iMenuStride);                  
+                g_lMenuIDs = llDeleteSubList(g_lMenuIDs, iMenuIndex - 1, iMenuIndex - 2 + g_iMenuStride);
                 if (sMenuType == g_sSubMenu)
                 {
-                    if (sMessage == UPMENU)
-                    {//give kID the parent menu
+                    if (sMessage == UPMENU)//give kID the parent menu
                         llMessageLinked(LINK_SET, iAuth, "menu " + g_sParentMenu, kAv);
-                    }
                     else if(llGetSubString(sMessage, llStringLength(TICKED), -1) == APPLOCK)
                     {
                         integer lock = llGetSubString(sMessage, 0, llStringLength(UNTICKED) - 1) == UNTICKED;
                         if (iAuth == COMMAND_OWNER) g_iAppLock = lock;
-                        // /Hack
                         if (lock) llMessageLinked(LINK_SET, iAuth, "lockappearance 1", kAv);
                         else llMessageLinked(LINK_SET, iAuth, "lockappearance 0", kAv);
                         DoMenu(kAv, iAuth);
                     }
-                    else if (~llListFindList(g_lButtons, [sMessage]))
-                    {//we got a submenu selection
+                    else if (~llListFindList(g_lButtons, [sMessage]))//we got a submenu selection
                         llMessageLinked(LINK_SET, iAuth, "menu " + sMessage, kAv);
-                    }                                
                 }
             }
             if (sToken == chaintoken)
@@ -339,7 +315,6 @@ default
                 {
                     ChainCurrent=llListFindList(ChainMenuButtons, [message]);
                     SendDefChainCommand();
-                    llMessageLinked(LINK_THIS, LM_SETTING_SAVE, chaintoken + "=" + (string)ChainCurrent, "");
                     ChainMenu(AV, iAuth);
                 }
                 else if (message=="Resend")
@@ -352,11 +327,8 @@ default
         else if (iNum == DIALOG_TIMEOUT)
         {
             integer iMenuIndex = llListFindList(g_lMenuIDs, [kID]);
-            if (iMenuIndex != -1)
-            {//remove stride from g_lMenuIDs
-                //we have to subtract from the index because the dialog id comes in the middle of the stride
+            if (iMenuIndex != -1)//remove stride from g_lMenuIDs. We have to subtract from the index because the dialog id comes in the middle of the stride
                 g_lMenuIDs = llDeleteSubList(g_lMenuIDs, iMenuIndex - 1, iMenuIndex - 2 + g_iMenuStride);                          
-            }            
         }
     } 
     

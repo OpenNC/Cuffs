@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////////
 // ------------------------------------------------------------------------------ //
 //                            OpenNC - color cuff                                 //
-//                            version 3.960                                       //
+//                            version 3.980                                       //
 // ------------------------------------------------------------------------------ //
 // Licensed under the GPLv2 with additional requirements specific to Second Life® //
 // and other virtual metaverse environments.                                      //
@@ -29,6 +29,8 @@ string g_sAppLockToken = "Appearance_Lock";
 //MESSAGE MAP
 integer COMMAND_OWNER = 500;
 integer COMMAND_WEARER = 503;
+integer NOTIFY = 550;
+integer SENDCMD= 551;
 integer LM_SETTING_SAVE = 2000;//scripts send messages on this channel to have settings saved to httpdb
 integer LM_SETTING_RESPONSE = 2002;//the httpdb script will send responses on this channel
 integer LM_SETTING_DELETE = 2003;//delete token from DB
@@ -84,46 +86,32 @@ Lavender|<0.89020, 0.65882, 0.99608>
 Black|<0.00000, 0.00000, 0.00000>
 White|<1.00000, 1.00000, 1.00000>"
 ];
-// ------ start of extra Cuff bits------
-integer g_nCmdChannel    = -190890;
-integer g_nCmdChannelOffset = 0xCC0CC;       // offset to be used to make sure we do not interfere with other items using the same technique for
-string    g_szModToken    = "rlac"; // valid token for this module
-string g_szColorChangeCmd="ColorChanged"; // Comand for Cuffs to change the colors
 
+//integer g_nCmdChannel    = -190890;
+//integer g_nCmdChannelOffset = 0xCC0CC;       // offset to be used to make sure we do not interfere with other items using the same technique for
+string  g_szModToken = "rlac"; // valid token for this module
+string g_szColorChangeCmd ="ColorChanged"; // Comand for Cuffs to change the colors
+/*
 integer nGetOwnerChannel(integer nOffset)//Lets get out channel number
 {
     integer chan = (integer)("0x"+llGetSubString((string)llGetOwner(),3,8)) + g_nCmdChannelOffset;
     if (chan>0)
-    {
         chan=chan*(-1);
-    }
     if (chan > -10000)
-    {
         chan -= 30000;
-    }
     return chan;
 }
-//===============================================================================
-//= parameters   :    string    szSendTo    prefix of receiving modul
-//=                    string    szCmd       message string to send
-//=                    key        keyID        key of the AV or object
-//=
-//= retun        :    none
-//=
-//= description  :    Sends the command with the prefix and the UUID
-//=                    on the command channel
-//=
-//===============================================================================
+*/
 SendCmd( string szSendTo, string szCmd, key keyID )
 {
-    llRegionSay(g_nCmdChannel + 1, g_szModToken + "|" + szSendTo + "|" + szCmd + "|" + (string)keyID);//lets send the command on our channel + 1
+//    llRegionSayTo(g_kWearer,g_nCmdChannel + 1, g_szModToken + "|" + szSendTo + "|" + szCmd + "|" + (string)keyID);//lets send the command on our channel + 1
+     llMessageLinked( LINK_SET, SENDCMD, g_szModToken + "|" + szSendTo + "|" + szCmd + "|" + (string)keyID, keyID);
 }
 
 string szStripSpaces (string szStr)
 {
     return llDumpList2String(llParseString2List(szStr, [" "], []), "");
 }
-//------end of extra cuff bits-----
 
 key Dialog(key kRCPT, string sPrompt, list lChoices, list lUtilityButtons, integer iPage, integer iAuth)
 {
@@ -142,23 +130,22 @@ key TouchRequest(key kRCPT,  integer iTouchStart, integer iTouchEnd, integer iAu
     llMessageLinked(LINK_SET, TOUCH_REQUEST, (string)kRCPT + "|" + (string)iFlags + "|" + (string)iAuth, kID);
     return kID;
 } 
-
+/*
 Notify(key kID, string sMsg, integer iAlsoNotifyWearer)
 {
     if (kID == g_kWearer)
-    {
         llOwnerSay(sMsg);
-    }
     else
     {
-        llInstantMessage(kID, sMsg);
+        if (llGetAgentSize(kID) != ZERO_VECTOR)
+            llRegionSayTo(kID,0,sMsg);
+        else
+            llInstantMessage(kID, sMsg);
         if (iAlsoNotifyWearer)
-        {
             llOwnerSay(sMsg);
-        }
     }
 }
-
+*/
 CategoryMenu(key kAv, integer iAuth)
 { //give kAv a dialog with a list of color cards
     string sPrompt = "\n\nSelect a color catagory.\n";
@@ -185,13 +172,9 @@ string ElementType(integer iLinkNumber)
     //each prim should have <elementname> in its description, plus "nocolor" or "notexture", if you want the prim to not appear in the color or texture menus
     list lParams = llParseString2List(sDesc, ["~"], []);
     if ((~(integer)llListFindList(lParams, ["nocolor"])) || sDesc == "" || sDesc == " " || sDesc == "(No Description)")
-    {
         return "nocolor";
-    }
     else
-    {
         return llList2String(lParams, 0);
-    }
 }
 
 BuildElementList()
@@ -202,9 +185,7 @@ BuildElementList()
     {
         string sElement = ElementType(n);
         if (!(~llListFindList(g_lElements, [sElement])) && sElement != "nocolor")
-        {
             g_lElements += [sElement];
-        }
     }
 }
 
@@ -215,24 +196,17 @@ SetElementColor(string sElement, vector vColor)
     for (n = 2; n <= iLinkCount; n++)
     {
         string thiselement = ElementType(n);
-        if (thiselement == sElement)
-        {
-            //set link to new color
+        if (thiselement == sElement) //set link to new color
             llSetLinkColor(n, vColor, ALL_SIDES);
-        }
     }
     //create shorter string from the color vectors before saving
     string sStrColor = Vec2String(vColor);
     //change the g_lColorSettings list entry for the current element
     integer iIndex = llListFindList(g_lColorSettings, [sElement]);
     if (iIndex == -1)
-    {
         g_lColorSettings += [sElement, sStrColor];
-    }
     else
-    {
         g_lColorSettings = llListReplaceList(g_lColorSettings, [sStrColor], iIndex + 1, iIndex + 1);
-    }
     //save to settings
     llMessageLinked(LINK_SET, LM_SETTING_SAVE, g_sScript + sElement + "=" + sStrColor, "");
 }
@@ -251,9 +225,7 @@ string Vec2String(vector vVec)
         string sStr = llList2String(lParts, n);
         //remove any trailing 0's or .'s from sStr
         while ((~(integer)llSubStringIndex(sStr, ".")) && (llGetSubString(sStr, -1, -1) == "0" || llGetSubString(sStr, -1, -1) == "."))
-        {
             sStr = llGetSubString(sStr, 0, -2);
-        }
         lParts = llListReplaceList(lParts, [sStr], n, n);
     }
     return "<" + llDumpList2String(lParts, ",") + ">";
@@ -268,14 +240,11 @@ default
         BuildElementList();//loop through non-root prims, build element list
         llSleep(1.0);
         llMessageLinked(LINK_SET, MENUNAME_RESPONSE, g_sParentMenu + "|" + g_sSubMenu, "");
-        //-------------extra cuffs-------------
-        g_nCmdChannel = nGetOwnerChannel(g_nCmdChannelOffset); // get the owner defined channel
-        //---------end extra cuffs-------------
+//        g_nCmdChannel = nGetOwnerChannel(g_nCmdChannelOffset); // get the owner defined channel
     }
 
     link_message(integer iSender, integer iNum, string sStr, key kID)
     {
-        //-------------extra cuffs-------------
         string sMsg2;
         string sMsg3;
         list lParams1 = llParseString2List(sStr, ["_"], []);
@@ -288,7 +257,6 @@ default
             SendCmd("*",g_szColorChangeCmd+"=" + sMsg3,"");//send color change to other cuffs
             SetElementColor(llList2String(lParams2,0),(vector)szStripSpaces(llList2String(lParams2,1))); //send the color change to this cuff
         }
-        //---------end extra cuffs-------------
         if (sStr == "reset" && (iNum == COMMAND_OWNER || iNum == COMMAND_WEARER))
         {//clear saved settings
             llMessageLinked(LINK_SET, LM_SETTING_DELETE, g_sScript + "all", "");
@@ -306,7 +274,8 @@ default
                     out += llList2String(g_lColorSettings, i) + "=";
                     out += llList2String(g_lColorSettings, i + 1);
                 }
-                Notify(kID, "Color Settings: " + out,FALSE);
+//                Notify(kID, "Color Settings: " + out,FALSE);
+                llMessageLinked(LINK_SET, NOTIFY, "Color Settings: " + out + " |FALSE",kID);
             }
             else if (sStr == "refreshmenu")
             {
@@ -316,13 +285,11 @@ default
             else if (StartsWith(sStr, "setcolor"))
             {
                 if (kID!=g_kWearer && iNum!=COMMAND_OWNER)
-                {
-                    Notify(kID,"You are not allowed to change the colors.", FALSE);
-                }
+//                    Notify(kID,"You are not allowed to change the colors.", FALSE);
+                    llMessageLinked(LINK_SET, NOTIFY, "You are not allowed to change the colors.|FALSE",kID);
                 else if (g_iAppLock)
-                {
-                    Notify(kID,"The appearance of the " + CTYPE + " is locked. You cannot access this menu now!", FALSE);
-                }
+//                    Notify(kID,"The appearance of the " + CTYPE + " is locked. You cannot access this menu now!", FALSE);
+                    llMessageLinked(LINK_SET, NOTIFY, "The appearance of the " + CTYPE + " is locked. You cannot access this menu now!|FALSE",kID);
                 else
                 {
                     list lParams = llParseString2List(sStr, [" "], []);
@@ -336,12 +303,14 @@ default
             {
                 if (kID!=g_kWearer && iNum!=COMMAND_OWNER)
                 {
-                    Notify(kID,"You are not allowed to change the colors.", FALSE);
+//                    Notify(kID,"You are not allowed to change the colors.", FALSE);
+                    llMessageLinked(LINK_SET, NOTIFY, "You are not allowed to change the colors.|FALSE",kID);
                     llMessageLinked(LINK_SET, iNum, "clooks", kID);
                 }
                 else if (g_iAppLock)
                 {
-                    Notify(kID,"The appearance of the " + CTYPE + " is locked. You cannot access this menu now!", FALSE);
+//                    Notify(kID,"The appearance of the " + CTYPE + " is locked. You cannot access this menu now!", FALSE);
+                    llMessageLinked(LINK_SET, NOTIFY, "The appearance of the " + CTYPE + " is locked. You cannot access this menu now!|FALSE",kID);
                     llMessageLinked(LINK_SET, iNum, "clooks", kID);
                 }
                 else
@@ -355,17 +324,12 @@ default
                 if (iNum == COMMAND_OWNER)
                 {
                     if(llGetSubString(sStr, -1, -1) == "0")
-                    {
                         g_iAppLock  = FALSE;
-                    }
                     else
-                    {
                         g_iAppLock  = TRUE;
-                    }
                 }
             }
         }
-        
         else if (iNum == LM_SETTING_RESPONSE)
         {
             integer i = llSubStringIndex(sStr, "=");
@@ -378,9 +342,7 @@ default
                 SetElementColor(sToken, (vector)sValue);
             }
             else if (sToken == g_sAppLockToken)
-            {
                 g_iAppLock = (integer)sValue;
-            }
             else if (sToken == "Global_CType") CTYPE = sValue;
         }
         else if (iNum == MENUNAME_REQUEST && sStr == g_sParentMenu)
@@ -401,10 +363,8 @@ default
                 integer iAuth = (integer)llList2String(lMenuParams, 3);
                 if (sMessage == UPMENU)
                 {
-                    if (g_sCurrentElement == "")
-                    {//main menu
+                    if (g_sCurrentElement == "")//main menu
                         llMessageLinked(LINK_SET, iAuth, "menu "+g_sParentMenu, kAv);
-                    }
                     else if (g_sCurrentCategory == "")
                     {
                         g_sCurrentElement = "";
@@ -418,7 +378,8 @@ default
                 }
                 else if (sMessage == "*Touch*")
                 {
-                    Notify(kAv, "Please touch the part of the " + CTYPE + " you want to recolor.", FALSE);
+//                    Notify(kAv, "Please touch the part of the " + CTYPE + " you want to recolor.", FALSE);
+                    llMessageLinked(LINK_SET, NOTIFY, "Please touch the part of the " + CTYPE + " you want to recolor.|FALSE",kAv);
                     g_kTouchID = TouchRequest(kAv, TRUE, FALSE, iAuth);
                 }
                 else if (g_sCurrentElement == "")
@@ -444,10 +405,8 @@ default
                     integer iIndex = llListFindList(g_lColors, [sMessage]);
                     vector vColor = (vector)llList2String(g_lColors, iIndex + 1);
                     SetElementColor(g_sCurrentElement, vColor);
-                    //-------------extra cuffs-------------
                     //send to other cuffs
                     SendCmd("*",g_szColorChangeCmd+"="+g_sCurrentElement+"="+(string)vColor,"");
-                    //---------end extra cuffs-------------
                     ColorMenu(kAv, iAuth);
                 }
             }
@@ -456,9 +415,7 @@ default
         {
             integer iMenuIndex = llListFindList(g_lMenuIDs, [kID]);
             if (iMenuIndex != -1)
-            {
                 g_lMenuIDs=llDeleteSubList(g_lMenuIDs,iMenuIndex,iMenuIndex);
-            }
         }
         else if (iNum == TOUCH_RESPONSE)
         {
@@ -468,17 +425,18 @@ default
                 key kAv = (key)llList2String(lParams, 0);
                 integer iAuth = (integer)llList2String(lParams, 1);
                 integer iLinkNumber = (integer)llList2String(lParams, 3);
-                
                 string sElement = ElementType(iLinkNumber);
                 if (sElement != "nocolor")
                 {
                     CategoryMenu(kAv, iAuth);
                     g_sCurrentElement = sElement;
-                    Notify(kAv, "You selected \""+sElement+"\".", FALSE);
+//                    Notify(kAv, "You selected \""+sElement+"\".", FALSE);
+                    llMessageLinked(LINK_SET, NOTIFY, "You selected \""+sElement+"\".|FALSE",kAv);
                 }
                 else
                 {
-                    Notify(kAv, "You selected a prim which is not colorable. You can try again.", FALSE);
+//                    Notify(kAv, "You selected a prim which is not colorable. You can try again.", FALSE);
+                    llMessageLinked(LINK_SET, NOTIFY, "You selected a prim which is not colorable. You can try again.|FALSE",kAv);
                     ElementMenu(kAv, iAuth);
                 }
             }

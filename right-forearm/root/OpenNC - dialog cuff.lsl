@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////////
 // ------------------------------------------------------------------------------ //
 //                              OpenNC - dialog cuff                              //
-//                                 version 3.960                                  //
+//                                 version 3.980                                  //
 // ------------------------------------------------------------------------------ //
 // Licensed under the GPLv2 with additional requirements specific to Second Life® //
 // and other virtual metaverse environments.                                      //
@@ -20,6 +20,7 @@ integer COMMAND_OWNER = 500;
 integer COMMAND_SECOWNER = 501;
 integer COMMAND_GROUP = 502;
 integer COMMAND_WEARER = 503;
+integer NOTIFY = 550;
 integer LM_SETTING_SAVE = 2000;//scripts send messages on this channel to have settings saved to httpdb
 integer LM_SETTING_RESPONSE = 2002;//the httpdb script will send responses on this channel
 integer LM_SETTING_DELETE = 2003;//delete token from DB
@@ -100,23 +101,19 @@ string TruncateString(string sStr, integer iBytes)
     }
     return llUnescapeURL(sOut);
 }
-
+/*
 Notify(key kID, string sMsg, integer iAlsoNotifyWearer)
 {
     if (kID == g_kWearer)
-    {
         llOwnerSay(sMsg);
-    }
     else
     {
         llInstantMessage(kID, sMsg);
         if (iAlsoNotifyWearer)
-        {
             llOwnerSay(sMsg);
-        }
     }
 }
-
+*/
 integer ButtonDigits(list lIn)
 {// checks if any of the times is over 20 characters and deduces how many digits are needed
     integer m=llGetListLength(lIn);
@@ -133,9 +130,7 @@ integer RandomUniqueChannel()
 {
     integer iOut = llRound(llFrand(10000000)) + 100000;
     if (~llListFindList(g_lMenus, [iOut]))
-    {
         iOut = RandomUniqueChannel();
-    }
     return iOut;
 }
 
@@ -157,8 +152,10 @@ Dialog(key kRecipient, string sPrompt, list lMenuItems, list lUtilityButtons, in
     else iStart = 0;
     integer iEnd = iStart + iMyPageSize - 1;
     if (iEnd >= iNumitems) iEnd = iNumitems - 1;
-    if (iWithNums) { // put numbers in front of buttons: "00 Button1", "01 Button2", ...
-        integer iCur; for (iCur = iStart; iCur <= iEnd; iCur++) {
+    if (iWithNums) 
+    { // put numbers in front of buttons: "00 Button1", "01 Button2", ...
+        integer iCur; for (iCur = iStart; iCur <= iEnd; iCur++) 
+        {
             string sButton = llList2String(lMenuItems, iCur);
             if ((key)sButton) sButton = Key2Name((key)sButton);
             sButton = Integer2String(iCur, iWithNums) + " " + sButton;
@@ -171,29 +168,22 @@ Dialog(key kRecipient, string sPrompt, list lMenuItems, list lUtilityButtons, in
     integer iPromptlen=GetStringBytes(sPrompt);// check promt lenghtes
     if (iPromptlen>511)
     {
-        Notify(kRecipient,"The dialog prompt message is longer than 512 characters. It will be truncated to 512 characters.",TRUE);
+//        Notify(kRecipient,"The dialog prompt message is longer than 512 characters. It will be truncated to 512 characters.",TRUE);
+        llMessageLinked(LINK_SET, NOTIFY, "The dialog prompt message is longer than 512 characters. It will be truncated to 512 characters. |TRUE",kRecipient);
         sPrompt=TruncateString(sPrompt,510);
         sThisPrompt = sPrompt;
     }
     else if (iPromptlen + GetStringBytes(sThisPrompt)< 512)
-    {
         sThisPrompt= sPrompt + sThisPrompt;
-    }
     else
-    {
         sThisPrompt= sPrompt;
-    }
     integer iChan = RandomUniqueChannel();
     integer iListener = llListen(iChan, "", kRecipient, "");
     llSetTimerEvent(g_iReapeat);
     if (iNumitems > iMyPageSize)
-    {
         llDialog(kRecipient, sThisPrompt, PrettyButtons(lButtons, lUtilityButtons,[PREV,MORE]), iChan);
-    }
     else
-    {
         llDialog(kRecipient, sThisPrompt, PrettyButtons(lButtons, lUtilityButtons,[]), iChan);
-    }
     integer ts = llGetUnixTime() + g_iTimeOut;
     g_lMenus += [iChan, kID, iListener, ts, kRecipient, sPrompt, llDumpList2String(lMenuItems, "|"), llDumpList2String(lUtilityButtons, "|"), iPage, iWithNums, iAuth,extraInfo];
 }
@@ -209,21 +199,17 @@ list PrettyButtons(list lOptions, list lUtilityButtons, list iPagebuttons)
     }
     integer u = llListFindList(lCombined, [UPMENU]);// check if a UPBUTTON is present and remove it for the moment
     if (u != -1)
-    {
         lCombined = llDeleteSubList(lCombined, u, u);
-    }
     list lOut = llList2List(lCombined, 9, 11);
     lOut += llList2List(lCombined, 6, 8);
     lOut += llList2List(lCombined, 3, 5);
     lOut += llList2List(lCombined, 0, 2);
-    if (u != -1)
-    {//make sure we move UPMENU to the lower right corner
+    if (u != -1)//make sure we move UPMENU to the lower right corner
         lOut = llListInsertList(lOut, [UPMENU], 2);
-    }
     return lOut;
 }
 
-RemoveMenuStride(integer iIndex)       //fixme:  duplicates entire global lMenu list
+RemoveMenuStride(integer iIndex) //fixme:  duplicates entire global lMenu list
 {
     //tell this function the menu you wish to remove, identified by list index
     //it will close the listener, remove the menu's entry from the list, and return the new list
@@ -282,12 +268,14 @@ integer UserCommand(integer iNum, string sStr, key kID)
         {
             if (~i) return TRUE; // already in list
             MRSBUN += [kID];
-            Notify(kID, "Verbose Feature activated for you.", FALSE);
+//            Notify(kID, "Verbose Feature activated for you.", FALSE);
+            llMessageLinked(LINK_SET, NOTIFY, "Verbose Feature activated for you. |FALSE",kID);
         }
         else if (~i)
         {
             MRSBUN = llDeleteSubList(MRSBUN, i, i);
-            Notify(kID, "Verbose Feature de-activated for you.", FALSE);
+//            Notify(kID, "Verbose Feature de-activated for you.", FALSE);
+            llMessageLinked(LINK_SET, NOTIFY, "Verbose Feature de-activated for you. |FALSE",kID);
         }
         else return TRUE; // not in list to start with
         if (!llGetListLength(MRSBUN)) llMessageLinked(LINK_THIS, LM_SETTING_DELETE, g_sScript + SPAMSWITCH, "");
@@ -333,10 +321,8 @@ default
                     string name = llKey2Name(avId);
                     if (llSubStringIndex(llToLower(name), llToLower(find)) != -1)
                     { //if this name contains find string
-                        if (! ~llListFindList(excl,[(string)avId]))
-                        { //if this key is not in the excludelist
+                        if (! ~llListFindList(excl,[(string)avId])) //if this key is not in the excludelist
                             AVIS += avId;
-                        }
                     }
                 }
                 i = llGetListLength(AVIS);
@@ -359,9 +345,8 @@ default
                     Dialog(kRCPT, "\n\nChoose the person you like to add.", AVIS, [UPMENU], 0, kID, iDigits, iAuth, "getavi_|"+REQ+"|"+TYPE);
                 }
             }
-            else 
-            {
-            }
+            else
+            {}
         } 
         else if (iNum == DIALOG)
         {//give a dialog with the options on the button labels
@@ -377,9 +362,7 @@ default
                     return;
                 }
                 else
-                {
                     g_lRemoteMenus = llListReplaceList(g_lRemoteMenus, [], iIndex, iIndex+1);
-                }
             }
             string sPrompt = llList2String(lParams, 1);
             integer iPage = (integer)llList2String(lParams, 2);
@@ -409,13 +392,15 @@ default
                     iLength += GetStringBytes(sLine);
                     if (iLength >= 1024)
                     {
-                        Notify(kRCPT, sOut, FALSE);
+//                        Notify(kRCPT, sOut, FALSE);
+                        llMessageLinked(LINK_SET, NOTIFY, sOut + " |FALSE",kRCPT);
                         iLength = 0;
                         sOut = "";
                     }
                     sOut += sLine;
                 }
-                Notify(kRCPT, sOut, FALSE);
+//                Notify(kRCPT, sOut, FALSE);
+                llMessageLinked(LINK_SET, NOTIFY, sOut + " |FALSE",kRCPT);
             }
         }
         else if (llGetSubString(sStr, 0, 10) == "remotemenu:")
@@ -427,22 +412,16 @@ default
                 {
                     integer iIndex = llListFindList(g_lRemoteMenus, [kID]);
                     if (~iIndex)
-                    {
                         g_lRemoteMenus = llListReplaceList(g_lRemoteMenus, [kID, llGetSubString(sCmd, 4, -1)], iIndex, iIndex+1);
-                    }
                     else
-                    {
                         g_lRemoteMenus += [kID, llGetSubString(sCmd, 4, -1)];
-                    }
                     llMessageLinked(LINK_SET, iNum, "menu", kID);
                 }
                 else if (llGetSubString(sCmd, 0, 2) == "off")
                 {
                     integer iIndex = llListFindList(g_lRemoteMenus, [kID]);
                     if (~iIndex)
-                    {
                         g_lRemoteMenus = llListReplaceList(g_lRemoteMenus, [], iIndex, iIndex+1);
-                    }
                 }
                 else if (llGetSubString(sCmd, 0, 8) == "response:")
                 {
@@ -450,9 +429,7 @@ default
                     llMessageLinked(LINK_SET, DIALOG_RESPONSE, llList2String(lParams, 0) + "|" + llList2String(lParams, 1) + "|" + llList2String(lParams, 2), llList2String(lParams, 3));
                 }
                 else if (llGetSubString(sCmd, 0, 7) == "timeout:")
-                {
                     llMessageLinked(LINK_SET, DIALOG_TIMEOUT, "", llGetSubString(sCmd, 8, -1));
-                }
             }
         }
         else if (UserCommand(iNum, sStr, kID)) return;
@@ -486,9 +463,7 @@ default
                 iPage++;
                 integer thisiPagesize = iPagesize - llGetListLength(ubuttons) - 2;
                 if (iPage * thisiPagesize >= llGetListLength(items))
-                {
                     iPage = 0;
-                }
                 Dialog(kID, sPrompt, items, ubuttons, iPage, kMenuID, iDigits, iAuth,sExtraInfo);
             }
             else if (sMessage == PREV)
@@ -501,10 +476,8 @@ default
                 }
                 Dialog(kID, sPrompt, items, ubuttons, iPage, kMenuID, iDigits, iAuth, sExtraInfo);
             }
-            else if (sMessage == BLANK)
-            {//give the same menu back
+            else if (sMessage == BLANK) //give the same menu back
                 Dialog(kID, sPrompt, items, ubuttons, iPage, kMenuID, iDigits, iAuth, sExtraInfo);
-            }
             else
             {
                 string sAnswer;
@@ -521,22 +494,14 @@ default
                     string REQ=llList2String(lExtraInfo,1);
                     string TYPE=llList2String(lExtraInfo,2);
                     if (sMessage==UPMENU)
-                    {
                         llMessageLinked(LINK_SET,iAuth,"access",kAv);
-                    } 
                     else if (sMessage == "Yes") 
-                    {
                         llMessageLinked(LINK_THIS, FIND_AGENT, REQ+"|"+g_sGetAviScript+"|"+(string)kAv+"|"+(string)iAuth+"|"+TYPE+"|"+(string)g_kWearer, kMenuID);
-                    } 
                     else if (sMessage == "No") 
-                    {//no action
-                    } 
+                    {} 
                     else 
-                    {
                         llMessageLinked(LINK_THIS, FIND_AGENT, REQ+"|"+g_sGetAviScript+"|"+(string)kAv+"|"+(string)iAuth+"|"+TYPE+"|"+sAnswer, kMenuID);
-                    }
                 }
-
                 llMessageLinked(LINK_SET, DIALOG_RESPONSE, (string)kAv + "|" + sAnswer + "|" + (string)iPage + "|" + (string)iAuth, kMenuID);
             }
         }
@@ -545,9 +510,7 @@ default
     timer()
     {
         CleanList();
-        if (!llGetListLength(g_lMenus))
-        {//if list is empty after that, then stop timer
+        if (!llGetListLength(g_lMenus)) //if list is empty after that, then stop timer
             llSetTimerEvent(0.0);
-        }
     }
 }
