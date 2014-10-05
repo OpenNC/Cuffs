@@ -494,7 +494,7 @@ default
     
     attach(key attached)
     {
-        if (attached != "")   // object has been attached
+        if (attached != NULL_KEY)   // object has been attached
             Init();
     }
 
