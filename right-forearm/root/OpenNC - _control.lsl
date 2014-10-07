@@ -731,6 +731,7 @@ default
 
     on_rez(integer rez_state) 
     {
+        	llRequestPermissions(llGetOwner(),PERMISSION_TRIGGER_ANIMATION|PERMISSION_TAKE_CONTROLS); //Want permissions to be set immediately (on attachment, reattachment, or login).  Helps prevent animation/control permission issues when script loads with restrictions already in place.
         if (g_keyWearer!=llGetOwner())
             llResetScript(); //left in so it clears on new owner
     }
