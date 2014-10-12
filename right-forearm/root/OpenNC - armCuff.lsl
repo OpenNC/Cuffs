@@ -11,7 +11,7 @@
 // ------------------------------------------------------------------------------ //
 // Not now supported by OpenCollar at all                                         //
 ////////////////////////////////////////////////////////////////////////////////////
-string parentmenu = "Main";
+string parentmenu = "Apps";
 string submenu = "Cuff Poses";
 string dbtoken = "cuffmenu";
 string CLCMD = "cpose";
@@ -35,20 +35,18 @@ key g_keyDialogID;
 integer COMMAND_NOAUTH = 0;
 integer COMMAND_OWNER = 500;
 integer COMMAND_WEARER = 503;
-integer COMMAND_SAFEWORD = 510;  // new for safeword
+integer COMMAND_SAFEWORD = 510;//new for safeword
 integer NOTIFY = 550;
 integer HTTPDB_SAVE = 2000;//scripts send messages on this channel to have settings saved to httpdb
 integer HTTPDB_REQUEST = 2001;//when startup, scripts send requests for settings on this channel
 integer HTTPDB_RESPONSE = 2002;//the httpdb script will send responses on this channel
 integer HTTPDB_DELETE = 2003;//delete token from DB
-
 integer MENUNAME_REQUEST = 3000;
 integer MENUNAME_RESPONSE = 3001;
 integer SUBMENU = 3002;
 integer DIALOG = -9000;
 integer DIALOG_RESPONSE = -9001;
 string UPMENU = "BACK";
-
 string    g_szModToken    = "rlac";         // valid token for this module
 integer    LM_CUFF_CMD        = -551001;        // used as channel for linkemessages - sending commands
 key        g_keyWearer        = "";        // key of the owner/wearer
@@ -57,19 +55,7 @@ string szGetDBPrefix()
 {//get db prefix from list in object desc
     return llList2String(llParseString2List(llGetObjectDesc(), ["~"], []), 2);
 }
-/*
-Notify(key keyID, string szMsg, integer nAlsoNotifyWearer)
-{
-    if (keyID == g_keyWearer)
-        llOwnerSay(szMsg);
-    else
-    {
-        llInstantMessage(keyID,szMsg);
-        if (nAlsoNotifyWearer)
-            llOwnerSay(szMsg);
-    }
-}
-*/
+
 key Dialog(key rcpt, string prompt, list choices, list utilitybuttons, integer page)
 {
     key id = llGenerateKey();
@@ -167,14 +153,12 @@ default
                 else if (startswith(szMsg,"staymode"))
                 {
                     if ((g_nStayModeAuth!=0)&&(g_nStayModeAuth<nNum))
-//                        Notify(keyID,"You are not allowed to change the stay mode.",FALSE);
                         llMessageLinked(LINK_SET, NOTIFY, "You are not allowed to change the stay mode. |FALSE",keyID);
                     else if (szMsg=="staymode=off")
                     {// disable the stay mode
                         g_nStayModeAuth=FALSE;
                         llMessageLinked(LINK_THIS,HTTPDB_DELETE,g_szStayModeToken1,"");
                         llMessageLinked(LINK_SET, LM_CUFF_CMD, "staymode=off", "");
-//                        Notify(keyID,llKey2Name(g_keyWearer)+ " will now be able to move, even when the legs are bound.", TRUE);
                         llMessageLinked(LINK_SET, NOTIFY, llKey2Name(g_keyWearer)+ " will now be able to move, even when the legs are bound. |TRUE",keyID);
                     }
                     else if (szMsg=="staymode=slow")
@@ -183,7 +167,6 @@ default
                         g_nStayModeFixed=FALSE;
                         llMessageLinked(LINK_THIS,HTTPDB_SAVE,g_szStayModeToken1+"="+(string)nNum+",S","");
                         llMessageLinked(LINK_SET, LM_CUFF_CMD, "staymode=slow", "");
-//                        Notify(keyID,llKey2Name(g_keyWearer)+ " will now only able to move very slowly, when the legs are bound.", TRUE);
                          llMessageLinked(LINK_SET, NOTIFY, llKey2Name(g_keyWearer)+ " will now only able to move very slowly, when the legs are bound. |TRUE",keyID);
                     }
                     else if (szMsg=="staymode=on")
@@ -192,7 +175,6 @@ default
                         g_nStayModeFixed=TRUE;
                         llMessageLinked(LINK_THIS,HTTPDB_SAVE,g_szStayModeToken1+"="+(string)nNum+",F","");
                         llMessageLinked(LINK_SET, LM_CUFF_CMD, "staymode=on", "");
-//                        Notify(keyID,llKey2Name(g_keyWearer)+ " will now NOT be able to move, when the legs are bound.", TRUE);
                         llMessageLinked(LINK_SET, NOTIFY, llKey2Name(g_keyWearer)+ " will now NOT be able to move, when the legs are bound. |TRUE",keyID);
                     }
                     if (g_nRemenu)
@@ -208,11 +190,9 @@ default
                         g_nRLVModeAuth=FALSE;
                         llMessageLinked(LINK_THIS,HTTPDB_DELETE,g_szRLVModeToken,"");
                         llMessageLinked(LINK_SET, LM_CUFF_CMD, "rlvmode=off", "");
-//                        Notify(keyID,llKey2Name(g_keyWearer)+ " will now NOT be under RLV restrictions when bound.", TRUE);
                         llMessageLinked(LINK_SET, NOTIFY, llKey2Name(g_keyWearer)+ " will now NOT be under RLV restrictions when bound. |TRUE",keyID);
                     }
                     else
-//                        Notify(keyID,"You are not allowed to change the restriction mode.",FALSE);
                          llMessageLinked(LINK_SET, NOTIFY, "You are not allowed to change the restriction mode. |FALSE",keyID);
                     if (g_nRemenu)
                     {
@@ -225,7 +205,6 @@ default
                     g_nRLVModeAuth=nNum;
                     llMessageLinked(LINK_THIS,HTTPDB_SAVE,g_szRLVModeToken+"="+(string)nNum,"");
                     llMessageLinked(LINK_SET, LM_CUFF_CMD, "rlvmode=on", "");
-//                    Notify(keyID,llKey2Name(g_keyWearer)+ " will now be under RLV restrictions when bound.", TRUE);
                     llMessageLinked(LINK_SET, NOTIFY, llKey2Name(g_keyWearer)+ " will now be under RLV restrictions when bound. |TRUE",keyID);
                     if (g_nRemenu)
                     {
@@ -265,7 +244,7 @@ default
                             llMessageLinked(LINK_THIS, LM_CUFF_CMD, "staymode=on", NULL_KEY);
                             g_nStayModeFixed=TRUE;
                         }
-                        else
+                        else //slow
                         {
                             llMessageLinked(LINK_THIS, LM_CUFF_CMD, "staymode=slow", NULL_KEY);
                             g_nStayModeFixed=FALSE;
@@ -300,7 +279,6 @@ default
                     string message = llList2String(menuparams, 1);
                     integer page = (integer)llList2String(menuparams, 2);
                     integer iAuth = (integer)llList2String(menuparams, 3); // auth level of avatar
-
                     if ((message == UPMENU) && (g_keyDialogID == keyID))
                         llMessageLinked(LINK_SET, iAuth, "menu "+ parentmenu, AV);//NEW command structer
                     else if (~llListFindList(localbuttons, [message]))

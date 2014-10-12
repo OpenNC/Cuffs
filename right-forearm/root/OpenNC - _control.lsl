@@ -300,7 +300,6 @@ Override()
 
 GetPermissions()
 {
-//    if ( llGetAttached() )
         llRequestPermissions(llGetOwner(),PERMISSION_TRIGGER_ANIMATION|PERMISSION_TAKE_CONTROLS);
 }
 
@@ -521,8 +520,7 @@ default
         if ( nNum == LM_CUFF_CMD )
         {
             if ( szMsg == "detach=n")
-            {
-            }
+            { }//place holder, not used now
             else if ( szMsg == "reset")
                 llResetScript();
             // set the receiver/module token of this module
@@ -564,7 +562,6 @@ default
                 g_nSlowMode = FALSE;//sure it needs this as well!
                 if (g_nStay)
                 {
-//                    GetPermissions(); //not sure why we need this here
                     UnStay();
                 }
             }
@@ -693,12 +690,11 @@ default
             llTakeControls( CONTROL_DOWN|CONTROL_UP|CONTROL_FWD|CONTROL_BACK|CONTROL_LEFT|CONTROL_RIGHT|CONTROL_ROT_LEFT|CONTROL_ROT_RIGHT, TRUE, TRUE);
         //disable all controls but left mouse button (for stay cmd)
             if (!g_nLegAnimRunning)
-                llReleaseControls(); //legs not bound lets release controls
+                llReleaseControls(); //legs not bound lets release controls. Not sure it is ever trigered here!
             else if (g_nLegAnimRunning && g_nSlowMode) //slowdown only
                 llTakeControls(CONTROL_FWD|CONTROL_BACK, TRUE, FALSE);
             else if (g_nLegAnimRunning && g_nStayMode) // full stay
                 llTakeControls( CONTROL_ROT_LEFT | CONTROL_ROT_RIGHT | CONTROL_LBUTTON | CONTROL_ML_LBUTTON, FALSE, FALSE);
-            //moved release controls is no legs from here
         }
     }
 

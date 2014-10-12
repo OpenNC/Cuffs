@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////////
 // ------------------------------------------------------------------------------ //
 //                            OpenNC - menu cuff                                  //
-//                            version 3.980                                       //
+//                            version 3.981                                       //
 // ------------------------------------------------------------------------------ //
 // Licensed under the GPLv2 with additional requirements specific to Second Life® //
 // and other virtual metaverse environments.                                      //
@@ -16,20 +16,16 @@
 //on getting submenu name, add to list if not already present
 //on menu request, give dialog, with alphabetized list of submenus
 //on listen, send submenu link message
-
-list g_lMenuNames = ["Main", "Help/About"];
-
+list g_lMenuNames = ["Main", "Apps", "Help/About"];
 list g_lMenus;//exists in parallel to g_lMenuNames, each entry containing a pipe-delimited string with the items for the corresponding menu
 list g_lMenuPrompts = [
-"\n\nWelcome to the Main Menu\nOpenNC Version 3.980",
-"\n\nFrom here you can\nFix Menu's,\nGet a cuffs Help notecard,\nGet a link in local chat to join the support group.",
-"\n\nThis menu grants access to every installed AddOn.\n"
+"\n\nWelcome to the Main Menu\nOpenNC Version 3.981",
+"\n\nThis menu grants access to every installed AddOn.\n",
+"\n\nFrom here you can\nFix Menu's,\nGet a cuffs Help notecard,\nGet a link in local chat to join the support group."
 ];
-
 list g_lMenuIDs;//3-strided list of avatars given menus, their dialog ids, and the name of the menu they were given
 integer g_iMenuStride = 3;
 integer g_iScriptCount;//when the scriptcount changes, rebuild menus
-
 //MESSAGE MAP
 integer COMMAND_NOAUTH = 0;
 integer COMMAND_OWNER = 500;
@@ -49,7 +45,6 @@ string USER_GROUP_ID = "a6e8c5c4-b1e3-0ceb-175d-a0eb6685a807";
 string WIKI = "ℹ";
 string UPDATE = "Update";
 key wearer;
-
 //size adust
 float MIN_DIMENSION=0.001; // the minimum scale of a prim allowed, in any dimension
 float MAX_DIMENSION=1.0; // the maximum scale of a prim allowed, in any dimension
